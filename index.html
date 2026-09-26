@@ -1,0 +1,2784 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="mocha">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumen · SVG 渲染工作台</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<style>
+:root, [data-theme="latte"] {
+  --ctp-rosewater:#dc8a78; --ctp-flamingo:#dd7878; --ctp-pink:#ea76cb;
+  --ctp-mauve:#8839ef;     --ctp-red:#d20f39;      --ctp-maroon:#e64553;
+  --ctp-peach:#fe640b;     --ctp-yellow:#df8e1d;   --ctp-green:#40a02b;
+  --ctp-teal:#179299;      --ctp-sky:#04a5e5;      --ctp-sapphire:#209fb5;
+  --ctp-blue:#1e66f5;      --ctp-lavender:#7287fd;
+  --ctp-text:#4c4f69;      --ctp-subtext1:#5c5f77; --ctp-subtext0:#6c6f85;
+  --ctp-overlay2:#7c7f93;  --ctp-overlay1:#8c8fa1; --ctp-overlay0:#9ca0b0;
+  --ctp-surface2:#acb0be;  --ctp-surface1:#bcc0cc; --ctp-surface0:#ccd0da;
+  --ctp-base:#eff1f5;      --ctp-mantle:#e6e9ef;   --ctp-crust:#dce0e8;
+  color-scheme: light;
+}
+[data-theme="mocha"] {
+  --ctp-rosewater:#f5e0dc; --ctp-flamingo:#f2cdcd; --ctp-pink:#f5c2e7;
+  --ctp-mauve:#cba6f7;     --ctp-red:#f38ba8;      --ctp-maroon:#eba0ac;
+  --ctp-peach:#fab387;     --ctp-yellow:#f9e2af;   --ctp-green:#a6e3a1;
+  --ctp-teal:#94e2d5;      --ctp-sky:#89dceb;      --ctp-sapphire:#74c7ec;
+  --ctp-blue:#89b4fa;      --ctp-lavender:#b4befe;
+  --ctp-text:#cdd6f4;      --ctp-subtext1:#bac2de; --ctp-subtext0:#a6adc8;
+  --ctp-overlay2:#9399b2;  --ctp-overlay1:#7f849c; --ctp-overlay0:#6c7086;
+  --ctp-surface2:#585b70;  --ctp-surface1:#45475a; --ctp-surface0:#313244;
+  --ctp-base:#1e1e2e;      --ctp-mantle:#181825;   --ctp-crust:#11111b;
+  color-scheme: dark;
+}
+:root {
+  --bg: var(--ctp-base);
+  --panel: var(--ctp-mantle);
+  --panel-2: var(--ctp-crust);
+  --border: var(--ctp-surface0);
+  --border-2: var(--ctp-surface1);
+  --fg: var(--ctp-text);
+  --fg-muted: var(--ctp-subtext0);
+  --fg-dim: var(--ctp-overlay1);
+  --r-xs: 6px;  --r-sm: 9px;  --r-md: 12px;
+  --r-lg: 16px; --r-xl: 20px;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+               "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code",
+               Menlo, Consolas, "Liberation Mono", monospace;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background: var(--bg);
+  color: var(--fg);
+  display: grid;
+  grid-template-rows: 4px 62px minmax(0, 1fr) 34px;
+  height: 100dvh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+body::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 60% 46% at 8% -8%,
+      color-mix(in oklab, var(--ctp-mauve) 20%, transparent), transparent 62%),
+    radial-gradient(ellipse 52% 42% at 96% 108%,
+      color-mix(in oklab, var(--ctp-teal) 16%, transparent), transparent 62%),
+    radial-gradient(ellipse 40% 30% at 50% 50%,
+      color-mix(in oklab, var(--ctp-blue) 6%, transparent), transparent 70%);
+}
+::selection { background: color-mix(in oklab, var(--ctp-mauve) 34%, transparent); }
+.spectrum {
+  display: grid; grid-template-columns: repeat(14, 1fr);
+  position: relative; z-index: 3;
+}
+.spectrum span { display: block; }
+.topbar {
+  position: relative; z-index: 3;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 0 18px;
+  background: color-mix(in oklab, var(--panel) 86%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border-bottom: 1px solid var(--border);
+}
+.brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.brand-mark {
+  width: 32px; height: 32px; flex: none; display: block;
+  filter: drop-shadow(0 2px 8px color-mix(in oklab, var(--ctp-mauve) 40%, transparent));
+}
+.brand-name {
+  margin: 0; font-size: 15px; font-weight: 680;
+  letter-spacing: -0.015em; line-height: 1.15; color: var(--fg);
+}
+.brand-sub {
+  margin: 1px 0 0; font-size: 10.5px; line-height: 1.2;
+  color: var(--fg-dim); font-family: var(--font-mono);
+  letter-spacing: 0.04em; white-space: nowrap;
+}
+.actions { display: flex; align-items: center; gap: 4px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 12px; border: 1px solid transparent;
+  border-radius: var(--r-sm); background: transparent;
+  color: var(--btn-accent, var(--fg-muted)); font: inherit;
+  font-size: 12.5px; font-weight: 560; line-height: 1;
+  white-space: nowrap; cursor: pointer;
+  transition: background-color .16s ease, border-color .16s ease,
+              transform .1s ease, color .16s ease;
+}
+.btn i { font-size: 15.5px; line-height: 1; }
+.btn:hover {
+  background: color-mix(in oklab, var(--btn-accent, var(--ctp-mauve)) 15%, transparent);
+  border-color: color-mix(in oklab, var(--btn-accent, var(--ctp-mauve)) 30%, transparent);
+}
+.btn:active { transform: scale(0.965); }
+.btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--btn-accent, var(--ctp-mauve)) 70%, transparent);
+  outline-offset: 1px;
+}
+.btn[disabled] { opacity: 0.36; pointer-events: none; }
+.btn-primary {
+  background: linear-gradient(118deg,
+    color-mix(in oklab, var(--ctp-peach) 92%, transparent),
+    color-mix(in oklab, var(--ctp-pink) 92%, transparent));
+  color: var(--ctp-crust); border-color: transparent;
+}
+.btn-primary:hover { filter: brightness(1.07); }
+.theme-toggle {
+  margin-left: 6px; padding: 8px 14px; border: 0;
+  border-radius: var(--r-sm);
+  background: linear-gradient(118deg, var(--ctp-mauve), var(--ctp-blue) 50%, var(--ctp-teal));
+  color: var(--ctp-crust); font: inherit; font-size: 12.5px;
+  font-weight: 680; line-height: 1;
+  display: inline-flex; align-items: center; gap: 6px;
+  cursor: pointer; white-space: nowrap;
+  box-shadow: 0 2px 14px color-mix(in oklab, var(--ctp-mauve) 30%, transparent);
+  transition: transform .12s ease, filter .16s ease, box-shadow .2s ease;
+}
+.theme-toggle:hover {
+  filter: brightness(1.08);
+  box-shadow: 0 3px 20px color-mix(in oklab, var(--ctp-mauve) 44%, transparent);
+}
+.theme-toggle:active { transform: scale(0.965); }
+.theme-toggle:focus-visible { outline: 2px solid var(--ctp-lavender); outline-offset: 2px; }
+.theme-toggle i { font-size: 15.5px; }
+main {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: 318px minmax(0, 1fr);
+  min-height: 0; overflow: hidden;
+}
+.sidebar {
+  display: flex; flex-direction: column; min-height: 0;
+  background: color-mix(in oklab, var(--panel) 92%, transparent);
+  border-right: 1px solid var(--border);
+}
+.tabs {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 3px; padding: 9px;
+  border-bottom: 1px solid var(--border); flex: none;
+}
+.tab {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 4px; padding: 9px 2px 8px;
+  border: 1px solid transparent; border-radius: 11px;
+  background: transparent; color: var(--fg-dim);
+  font: inherit; font-size: 10px; font-weight: 580;
+  line-height: 1; cursor: pointer;
+  transition: background-color .18s ease, color .18s ease,
+              border-color .18s ease, transform .1s ease;
+}
+.tab i { font-size: 17px; line-height: 1; }
+.tab:hover { background: var(--ctp-surface0); color: var(--fg); }
+.tab:active { transform: scale(0.96); }
+.tab[aria-selected="true"] {
+  background: color-mix(in oklab, var(--tab-accent) 17%, transparent);
+  border-color: color-mix(in oklab, var(--tab-accent) 34%, transparent);
+  color: var(--tab-accent);
+}
+.tab:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--tab-accent) 65%, transparent);
+  outline-offset: 1px;
+}
+.panels {
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  scrollbar-width: thin; scrollbar-color: var(--ctp-surface1) transparent;
+}
+.panels::-webkit-scrollbar { width: 9px; }
+.panels::-webkit-scrollbar-track { background: transparent; }
+.panels::-webkit-scrollbar-thumb {
+  background: var(--ctp-surface0); border-radius: 9px;
+  border: 2px solid transparent; background-clip: content-box;
+}
+.panels::-webkit-scrollbar-thumb:hover {
+  background: var(--ctp-surface1); background-clip: content-box;
+}
+.panel { display: none; padding: 16px; animation: panel-in .22s cubic-bezier(0.16, 1, 0.3, 1); }
+.panel.is-active { display: block; }
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.panel-title {
+  display: flex; align-items: center; gap: 7px;
+  margin: 0 0 12px; font-family: var(--font-mono);
+  font-size: 10.5px; font-weight: 650;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--panel-accent);
+}
+.panel-title i { font-size: 15px; }
+.section { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+.section-label {
+  margin: 0 0 10px; font-family: var(--font-mono);
+  font-size: 10px; font-weight: 620;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--fg-dim);
+}
+.dropzone {
+  position: relative; display: flex; flex-direction: column;
+  align-items: center; gap: 7px;
+  padding: 26px 14px 24px;
+  border: 1.5px dashed var(--ctp-surface1);
+  border-radius: var(--r-lg); overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 0%,
+      color-mix(in oklab, var(--ctp-peach) 10%, transparent), transparent 70%),
+    color-mix(in oklab, var(--ctp-surface0) 32%, transparent);
+  cursor: pointer; text-align: center;
+  transition: border-color .2s ease, background-color .2s ease, transform .12s ease;
+}
+.dropzone:hover {
+  border-color: color-mix(in oklab, var(--ctp-peach) 60%, transparent);
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 0%,
+      color-mix(in oklab, var(--ctp-peach) 18%, transparent), transparent 70%),
+    color-mix(in oklab, var(--ctp-surface0) 42%, transparent);
+}
+.dropzone:active { transform: scale(0.988); }
+.dropzone:focus-visible { outline: 2px solid var(--ctp-peach); outline-offset: 2px; }
+.dropzone i.dz-icon {
+  font-size: 32px; color: var(--ctp-peach);
+  filter: drop-shadow(0 3px 12px color-mix(in oklab, var(--ctp-peach) 45%, transparent));
+  transition: transform .25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dropzone:hover i.dz-icon { transform: translateY(-3px); }
+.dz-title { margin: 2px 0 0; font-size: 13px; font-weight: 620; color: var(--fg); line-height: 1.3; }
+.dz-sub { margin: 0; font-size: 11px; color: var(--fg-dim); line-height: 1.4; }
+.file-card {
+  display: flex; align-items: center; gap: 11px;
+  margin-top: 14px; padding: 10px;
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--ctp-surface0) 42%, transparent);
+  animation: panel-in .25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.file-card[hidden] { display: none; }
+.file-thumb {
+  width: 46px; height: 46px; flex: none;
+  display: grid; place-items: center; padding: 5px;
+  border-radius: var(--r-sm); background: var(--ctp-base);
+  border: 1px solid var(--border); overflow: hidden;
+}
+.file-thumb svg { width: 100%; height: 100%; display: block; }
+.file-info { flex: 1; min-width: 0; }
+.file-name {
+  margin: 0; font-size: 12px; font-weight: 600; color: var(--fg);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.file-meta {
+  margin: 3px 0 0; font-family: var(--font-mono);
+  font-size: 10px; color: var(--fg-dim); white-space: nowrap;
+}
+.icon-btn {
+  flex: none; display: grid; place-items: center;
+  width: 28px; height: 28px;
+  border: 1px solid transparent; border-radius: var(--r-xs);
+  background: transparent; color: var(--fg-dim);
+  font-size: 15px; cursor: pointer;
+  transition: all .15s ease;
+}
+.icon-btn:hover {
+  background: color-mix(in oklab, var(--ctp-red) 16%, transparent);
+  border-color: color-mix(in oklab, var(--ctp-red) 32%, transparent);
+  color: var(--ctp-red);
+}
+.icon-btn:active { transform: scale(0.92); }
+.icon-btn:focus-visible { outline: 2px solid var(--ctp-red); outline-offset: 1px; }
+.field { margin-bottom: 15px; }
+.field:last-child { margin-bottom: 0; }
+.field-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; margin-bottom: 8px;
+}
+.field-head label { font-size: 11.5px; font-weight: 580; color: var(--fg-muted); }
+.field-head output {
+  font-family: var(--font-mono); font-size: 11px; font-weight: 620;
+  color: var(--slider-accent, var(--ctp-blue));
+  font-variant-numeric: tabular-nums;
+}
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 4px; border-radius: 4px;
+  background: var(--ctp-surface0); outline: none;
+  cursor: pointer; display: block; margin: 0;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--slider-accent, var(--ctp-blue));
+  border: 2.5px solid var(--panel);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--slider-accent, var(--ctp-blue)) 55%, transparent),
+              0 2px 8px color-mix(in oklab, var(--slider-accent, var(--ctp-blue)) 40%, transparent);
+  transition: transform .14s cubic-bezier(0.16, 1, 0.3, 1);
+}
+input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.22); }
+input[type="range"]::-moz-range-thumb {
+  width: 15px; height: 15px; border-radius: 50%;
+  background: var(--slider-accent, var(--ctp-blue));
+  border: 2.5px solid var(--panel);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--slider-accent, var(--ctp-blue)) 55%, transparent),
+              0 2px 8px color-mix(in oklab, var(--slider-accent, var(--ctp-blue)) 40%, transparent);
+}
+input[type="range"]:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--slider-accent, var(--ctp-blue)) 45%, transparent);
+}
+input[type="range"][disabled] { opacity: .4; pointer-events: none; }
+.btn-group { display: grid; gap: 5px; }
+.btn-group.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.btn-group.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.mini-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 5px; padding: 8px 8px;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: transparent; color: var(--fg-muted);
+  font: inherit; font-size: 11.5px; font-weight: 560;
+  line-height: 1; white-space: nowrap; cursor: pointer;
+  transition: all .16s ease;
+}
+.mini-btn i { font-size: 14px; }
+.mini-btn:hover {
+  background: color-mix(in oklab, var(--mini-accent, var(--ctp-blue)) 13%, transparent);
+  border-color: color-mix(in oklab, var(--mini-accent, var(--ctp-blue)) 34%, transparent);
+  color: var(--fg);
+}
+.mini-btn:active { transform: scale(0.965); }
+.mini-btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--mini-accent, var(--ctp-blue)) 62%, transparent);
+  outline-offset: 1px;
+}
+.mini-btn[aria-pressed="true"] {
+  background: color-mix(in oklab, var(--mini-accent, var(--ctp-blue)) 20%, transparent);
+  border-color: color-mix(in oklab, var(--mini-accent, var(--ctp-blue)) 45%, transparent);
+  color: var(--mini-accent, var(--ctp-blue));
+}
+.wide-btn {
+  width: 100%; display: inline-flex; align-items: center; justify-content: center;
+  gap: 7px; padding: 10px;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--ctp-surface0) 40%, transparent);
+  color: var(--fg-muted); font: inherit; font-size: 12px;
+  font-weight: 580; line-height: 1; cursor: pointer;
+  transition: all .16s ease;
+}
+.wide-btn i { font-size: 15px; }
+.wide-btn:hover {
+  background: color-mix(in oklab, var(--wide-accent, var(--ctp-lavender)) 14%, transparent);
+  border-color: color-mix(in oklab, var(--wide-accent, var(--ctp-lavender)) 36%, transparent);
+  color: var(--fg);
+}
+.wide-btn:active { transform: scale(0.98); }
+.wide-btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--wide-accent, var(--ctp-lavender)) 62%, transparent);
+  outline-offset: 1px;
+}
+.swatch-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.swatch {
+  position: relative; aspect-ratio: 1;
+  border: 1.5px solid var(--border); border-radius: var(--r-sm);
+  background: var(--sw-bg, var(--ctp-base));
+  cursor: pointer; padding: 0; overflow: hidden;
+  transition: transform .14s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color .16s ease, box-shadow .16s ease;
+}
+.swatch::after {
+  content: ""; position: absolute; inset: 0;
+  border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14);
+}
+.swatch:hover { transform: translateY(-2px); }
+.swatch:active { transform: translateY(-1px) scale(0.95); }
+.swatch[aria-pressed="true"] {
+  border-color: var(--ctp-blue);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ctp-blue) 42%, transparent);
+}
+.swatch:focus-visible { outline: 2px solid var(--ctp-blue); outline-offset: 2px; }
+.swatch-checker {
+  background-image:
+    linear-gradient(45deg,  var(--ctp-surface1) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--ctp-surface1) 25%, transparent 25%),
+    linear-gradient(45deg,  transparent 75%, var(--ctp-surface1) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--ctp-surface1) 75%);
+  background-size: 10px 10px;
+  background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+  background-color: var(--ctp-base);
+}
+.swatch-grid {
+  background-color: var(--ctp-base);
+  background-image:
+    linear-gradient(var(--ctp-surface1) 1px, transparent 1px),
+    linear-gradient(90deg, var(--ctp-surface1) 1px, transparent 1px);
+  background-size: 8px 8px;
+}
+.switch-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 9px 0;
+}
+.switch-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 560; color: var(--fg-muted);
+}
+.switch-label i { font-size: 15px; color: var(--switch-accent, var(--ctp-teal)); }
+.switch {
+  position: relative; width: 38px; height: 22px;
+  flex: none; border: 0; border-radius: 999px;
+  background: var(--ctp-surface0); cursor: pointer; padding: 0;
+  transition: background-color .2s ease;
+}
+.switch::after {
+  content: ""; position: absolute;
+  top: 3px; left: 3px; width: 16px; height: 16px;
+  border-radius: 50%; background: var(--ctp-overlay0);
+  transition: transform .22s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color .2s ease;
+}
+.switch[aria-checked="true"] {
+  background: color-mix(in oklab, var(--switch-accent, var(--ctp-teal)) 45%, transparent);
+}
+.switch[aria-checked="true"]::after {
+  transform: translateX(16px);
+  background: var(--switch-accent, var(--ctp-teal));
+  box-shadow: 0 1px 6px color-mix(in oklab, var(--switch-accent, var(--ctp-teal)) 60%, transparent);
+}
+.switch:focus-visible { outline: 2px solid var(--switch-accent, var(--ctp-teal)); outline-offset: 2px; }
+.editor {
+  position: relative; height: 240px;
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  background: var(--bg); overflow: hidden;
+}
+.editor pre,
+.editor textarea {
+  position: absolute; inset: 0; margin: 0; padding: 12px 13px;
+  font-family: var(--font-mono); font-size: 11.5px; line-height: 1.7;
+  white-space: pre-wrap; overflow-wrap: break-word; word-break: normal;
+  tab-size: 2; border: 0;
+  scrollbar-width: none; -ms-overflow-style: none;
+}
+.editor pre::-webkit-scrollbar,
+.editor textarea::-webkit-scrollbar { display: none; }
+.editor pre { z-index: 0; overflow: hidden; pointer-events: none; color: var(--fg); }
+.editor textarea {
+  z-index: 1; overflow: auto; background: transparent;
+  color: transparent; caret-color: var(--ctp-mauve);
+  resize: none; outline: none; -webkit-text-fill-color: transparent;
+}
+.editor textarea::selection {
+  background: color-mix(in oklab, var(--ctp-mauve) 32%, transparent);
+}
+.t-t { color: var(--ctp-mauve); }
+.t-a { color: var(--ctp-blue); }
+.t-v { color: var(--ctp-green); }
+.t-c { color: var(--fg-dim); font-style: italic; }
+.t-p { color: var(--fg-dim); }
+.t-x { color: var(--fg); }
+.workspace {
+  position: relative; min-width: 0; min-height: 0;
+  display: flex; padding: 14px; overflow: hidden;
+}
+.stage-wrap {
+  position: relative; flex: 1; min-width: 0; min-height: 0;
+  border: 1px solid var(--border); border-radius: var(--r-xl);
+  overflow: hidden; cursor: grab; touch-action: none;
+  user-select: none; -webkit-user-select: none;
+  box-shadow:
+    0 1px 0 color-mix(in oklab, var(--ctp-surface1) 30%, transparent) inset,
+    0 18px 50px -22px rgba(0, 0, 0, .5);
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.stage-wrap:focus-visible { outline: 2px solid var(--ctp-blue); outline-offset: -2px; }
+.stage-wrap.is-dragging {
+  cursor: grabbing;
+  border-color: color-mix(in oklab, var(--ctp-blue) 55%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab, var(--ctp-blue) 30%, transparent) inset,
+    0 18px 60px -20px color-mix(in oklab, var(--ctp-blue) 40%, transparent);
+}
+.stage-bg {
+  position: absolute; inset: 0; z-index: 0;
+  background-color: var(--stage-bg-color, var(--ctp-base));
+}
+.stage-wrap[data-bg="checker"] .stage-bg {
+  background-image:
+    linear-gradient(45deg,  color-mix(in oklab, var(--ctp-surface1) 55%, transparent) 25%, transparent 25%),
+    linear-gradient(-45deg, color-mix(in oklab, var(--ctp-surface1) 55%, transparent) 25%, transparent 25%),
+    linear-gradient(45deg,  transparent 75%, color-mix(in oklab, var(--ctp-surface1) 55%, transparent) 75%),
+    linear-gradient(-45deg, transparent 75%, color-mix(in oklab, var(--ctp-surface1) 55%, transparent) 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}
+.stage-wrap[data-bg="grid"] .stage-bg {
+  background-image:
+    linear-gradient(color-mix(in oklab, var(--ctp-surface1) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--ctp-surface1) 60%, transparent) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+.stage-transform {
+  position: absolute; inset: 0; z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.svg-host {
+  display: block; line-height: 0;
+  transform-origin: center center;
+  will-change: transform; pointer-events: none;
+}
+.svg-host.is-shadowed {
+  filter:
+    drop-shadow(0 4px 10px rgba(0, 0, 0, .28))
+    drop-shadow(0 16px 42px rgba(0, 0, 0, .32));
+}
+.stage-state {
+  position: absolute; inset: 0; z-index: 2;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 12px; padding: 30px; text-align: center;
+  background: color-mix(in oklab, var(--bg) 88%, transparent);
+  backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
+}
+.stage-state[hidden] { display: none; }
+.state-icon {
+  display: grid; place-items: center;
+  width: 62px; height: 62px; border-radius: 50%;
+  font-size: 28px; border: 1px solid transparent;
+  animation: floaty 4.5s ease-in-out infinite;
+}
+.state-icon.is-empty {
+  color: var(--ctp-lavender);
+  background: color-mix(in oklab, var(--ctp-lavender) 12%, transparent);
+  border-color: color-mix(in oklab, var(--ctp-lavender) 26%, transparent);
+  box-shadow: 0 0 42px -8px color-mix(in oklab, var(--ctp-lavender) 50%, transparent);
+}
+.state-icon.is-error {
+  color: var(--ctp-red);
+  background: color-mix(in oklab, var(--ctp-red) 12%, transparent);
+  border-color: color-mix(in oklab, var(--ctp-red) 26%, transparent);
+  box-shadow: 0 0 42px -8px color-mix(in oklab, var(--ctp-red) 50%, transparent);
+  animation: none;
+}
+@keyframes floaty {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+.state-title {
+  margin: 0; font-size: 14.5px; font-weight: 650;
+  color: var(--fg); letter-spacing: -0.01em;
+}
+.state-desc {
+  margin: 0; max-width: 38ch;
+  font-size: 12.5px; line-height: 1.6; color: var(--fg-muted);
+}
+.state-desc code {
+  font-family: var(--font-mono); font-size: 11.5px;
+  color: var(--ctp-peach);
+  background: color-mix(in oklab, var(--ctp-peach) 13%, transparent);
+  padding: 2px 6px; border-radius: var(--r-xs);
+}
+.hud {
+  position: absolute; right: 14px; bottom: 14px; z-index: 3;
+  display: flex; align-items: center; gap: 3px;
+  padding: 5px; border: 1px solid var(--border); border-radius: 999px;
+  background: color-mix(in oklab, var(--panel) 88%, transparent);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  box-shadow: 0 6px 24px -8px rgba(0, 0, 0, .45);
+}
+.hud-zoom {
+  min-width: 52px; padding: 0 8px;
+  font-family: var(--font-mono); font-size: 11.5px;
+  font-weight: 620; color: var(--ctp-blue);
+  text-align: center; font-variant-numeric: tabular-nums;
+}
+.hud-btn {
+  display: grid; place-items: center;
+  width: 28px; height: 28px;
+  border: 0; border-radius: 50%;
+  background: transparent; color: var(--fg-muted);
+  font-size: 15px; cursor: pointer;
+  transition: background-color .15s ease, color .15s ease, transform .1s ease;
+}
+.hud-btn:hover {
+  background: color-mix(in oklab, var(--ctp-blue) 18%, transparent);
+  color: var(--ctp-blue);
+}
+.hud-btn:active { transform: scale(0.9); }
+.hud-btn:focus-visible { outline: 2px solid var(--ctp-blue); outline-offset: 1px; }
+.statusbar {
+  position: relative; z-index: 3;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 18px; border-top: 1px solid var(--border);
+  background: color-mix(in oklab, var(--panel) 86%, transparent);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--fg-dim); overflow: hidden;
+}
+.status-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.status-item strong { font-weight: 620; color: var(--fg-muted); }
+.status-spacer { flex: 1; }
+.dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--fg-dim); flex: none;
+  transition: background-color .2s ease, box-shadow .2s ease;
+}
+.dot.is-ok {
+  background: var(--ctp-green);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--ctp-green) 70%, transparent);
+}
+.dot.is-error {
+  background: var(--ctp-red);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--ctp-red) 70%, transparent);
+}
+.drop-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: grid; place-items: center;
+  background: color-mix(in oklab, var(--ctp-crust) 78%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s ease;
+}
+body.is-dragging-file .drop-overlay { opacity: 1; }
+.drop-overlay-inner {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px; padding: 56px 72px;
+  border: 2px dashed color-mix(in oklab, var(--ctp-peach) 60%, transparent);
+  border-radius: 26px;
+  background: color-mix(in oklab, var(--ctp-base) 55%, transparent);
+  transform: scale(0.96);
+  transition: transform .28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+body.is-dragging-file .drop-overlay-inner { transform: scale(1); }
+.drop-overlay-inner i {
+  font-size: 46px; color: var(--ctp-peach);
+  filter: drop-shadow(0 4px 20px color-mix(in oklab, var(--ctp-peach) 55%, transparent));
+  animation: floaty 1.8s ease-in-out infinite;
+}
+.drop-overlay-inner p { margin: 0; font-size: 15px; font-weight: 650; color: var(--fg); }
+.drop-overlay-inner span { font-family: var(--font-mono); font-size: 11px; color: var(--fg-dim); }
+.toast {
+  position: fixed; bottom: 54px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  z-index: 200; padding: 10px 18px;
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--panel) 94%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  font-size: 12.5px; font-weight: 560; color: var(--fg);
+  box-shadow: 0 8px 30px -10px rgba(0, 0, 0, .5);
+  opacity: 0; pointer-events: none;
+  transition: opacity .25s ease, transform .25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex; align-items: center; gap: 8px;
+}
+.toast.is-visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast i { font-size: 16px; }
+.toast.is-success i { color: var(--ctp-green); }
+.toast.is-error i { color: var(--ctp-red); }
+.layer-tree {
+  max-height: 240px; overflow-y: auto;
+  border: 1px solid var(--border); border-radius: var(--r-md);
+  padding: 6px; background: color-mix(in oklab, var(--ctp-surface0) 30%, transparent);
+  scrollbar-width: thin; scrollbar-color: var(--ctp-surface1) transparent;
+}
+.layer-tree::-webkit-scrollbar { width: 6px; }
+.layer-tree::-webkit-scrollbar-thumb {
+  background: var(--ctp-surface0); border-radius: 6px;
+}
+.layer-item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 8px; border-radius: var(--r-xs);
+  font-family: var(--font-mono); font-size: 11px;
+  color: var(--fg-muted); cursor: pointer;
+  transition: background-color .12s ease, color .12s ease;
+}
+.layer-item:hover {
+  background: color-mix(in oklab, var(--ctp-lavender) 12%, transparent);
+  color: var(--fg);
+}
+.layer-item.is-selected {
+  background: color-mix(in oklab, var(--ctp-lavender) 20%, transparent);
+  color: var(--ctp-lavender);
+}
+.layer-item i { font-size: 13px; flex: none; }
+.layer-item .layer-tag { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.layer-item .layer-dim {
+  font-size: 9.5px; color: var(--fg-dim);
+  padding: 1px 5px; border-radius: 4px;
+  background: color-mix(in oklab, var(--ctp-surface0) 60%, transparent);
+}
+.element-card {
+  padding: 10px; border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--ctp-surface0) 38%, transparent);
+}
+.element-tag {
+  font-family: var(--font-mono); font-size: 12px;
+  font-weight: 620; color: var(--ctp-lavender);
+  margin-bottom: 8px;
+}
+.element-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.color-swatches {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 6px;
+}
+.color-chip {
+  position: relative; aspect-ratio: 1;
+  border: 1.5px solid var(--border); border-radius: var(--r-sm);
+  cursor: pointer; padding: 0; overflow: hidden;
+  transition: transform .14s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color .16s ease, box-shadow .16s ease;
+}
+.color-chip::after {
+  content: ""; position: absolute; inset: 0;
+  border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16);
+}
+.color-chip:hover { transform: translateY(-2px); }
+.color-chip:active { transform: translateY(-1px) scale(0.94); }
+.color-chip:focus-visible { outline: 2px solid var(--ctp-blue); outline-offset: 2px; }
+.color-chip.is-active {
+  border-color: var(--ctp-blue);
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--ctp-blue) 42%, transparent);
+}
+::view-transition-old(root),
+::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+@media (max-width: 1024px) {
+  main { grid-template-columns: 280px minmax(0, 1fr); }
+}
+@media (max-width: 860px) {
+  body { grid-template-rows: 4px 58px minmax(0, 1fr) 32px; }
+  main { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .sidebar { border-right: 0; border-bottom: 1px solid var(--border); max-height: 46vh; }
+  .panels { max-height: calc(46vh - 76px); }
+  .workspace { padding: 10px; }
+  .stage-wrap { border-radius: var(--r-lg); }
+}
+@media (max-width: 700px) {
+  .topbar { padding: 0 12px; gap: 8px; }
+  .brand-sub { display: none; }
+  .btn-label { display: none; }
+  .btn { padding: 9px 10px; }
+  .theme-toggle { padding: 9px 11px; }
+  .theme-toggle .theme-name { display: none; }
+  .statusbar { gap: 10px; padding: 0 12px; }
+  .hide-sm { display: none !important; }
+  .hud { right: 10px; bottom: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+</style>
+<script>
+  document.documentElement.dataset.theme =
+    window.matchMedia('(prefers-color-scheme: light)').matches ? 'latte' : 'mocha';
+</script>
+</head>
+<body>
+
+  <div class="spectrum" id="spectrum" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="bm-g" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%"   style="stop-color: var(--ctp-mauve)"/>
+            <stop offset="52%"  style="stop-color: var(--ctp-blue)"/>
+            <stop offset="100%" style="stop-color: var(--ctp-teal)"/>
+          </linearGradient>
+          <linearGradient id="bm-b" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%"   style="stop-color: var(--ctp-pink)"/>
+            <stop offset="100%" style="stop-color: var(--ctp-peach)"/>
+          </linearGradient>
+        </defs>
+        <path d="M16 3.5 L29 27.5 L3 27.5 Z" stroke="url(#bm-g)" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M16 12 L22.5 23.5 L9.5 23.5 Z" fill="url(#bm-b)" opacity="0.92"/>
+      </svg>
+      <div>
+        <h1 class="brand-name">Lumen</h1>
+        <p class="brand-sub">SVG STUDIO</p>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" type="button" id="btnUpload" title="上传 SVG 文件">
+        <i class="ph ph-upload-simple" aria-hidden="true"></i>
+        <span class="btn-label">上传</span>
+      </button>
+      <button class="btn" type="button" id="btnCopy"
+              style="--btn-accent: var(--ctp-sky)" title="复制 SVG 源码" disabled>
+        <i class="ph ph-copy" aria-hidden="true"></i>
+        <span class="btn-label">复制</span>
+      </button>
+      <button class="btn" type="button" id="btnDownload"
+              style="--btn-accent: var(--ctp-green)" title="下载 .svg 文件" disabled>
+        <i class="ph ph-download-simple" aria-hidden="true"></i>
+        <span class="btn-label">下载</span>
+      </button>
+      <button class="theme-toggle" type="button" id="btnTheme" aria-label="切换主题">
+        <i class="ph ph-moon" id="themeIcon" aria-hidden="true"></i>
+        <span class="theme-name" id="themeName">Mocha</span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <aside class="sidebar">
+      <nav class="tabs" role="tablist" aria-label="控制面板">
+        <button class="tab" role="tab" data-tab="upload"
+                aria-selected="true" style="--tab-accent: var(--ctp-peach)">
+          <i class="ph ph-cloud-arrow-up" aria-hidden="true"></i>
+          <span>导入</span>
+        </button>
+        <button class="tab" role="tab" data-tab="transform"
+                aria-selected="false" style="--tab-accent: var(--ctp-blue)">
+          <i class="ph ph-crop" aria-hidden="true"></i>
+          <span>变换</span>
+        </button>
+        <button class="tab" role="tab" data-tab="canvas"
+                aria-selected="false" style="--tab-accent: var(--ctp-teal)">
+          <i class="ph ph-palette" aria-hidden="true"></i>
+          <span>画布</span>
+        </button>
+        <button class="tab" role="tab" data-tab="layers"
+                aria-selected="false" style="--tab-accent: var(--ctp-lavender)">
+          <i class="ph ph-stack" aria-hidden="true"></i>
+          <span>图层</span>
+        </button>
+        <button class="tab" role="tab" data-tab="code"
+                aria-selected="false" style="--tab-accent: var(--ctp-mauve)">
+          <i class="ph ph-code" aria-hidden="true"></i>
+          <span>源码</span>
+        </button>
+      </nav>
+
+      <div class="panels">
+
+        <section class="panel is-active" data-panel="upload"
+                 style="--panel-accent: var(--ctp-peach)">
+          <h2 class="panel-title">
+            <i class="ph ph-cloud-arrow-up" aria-hidden="true"></i>
+            <span>导入图形</span>
+          </h2>
+
+          <div class="dropzone" id="dropzone" tabindex="0" role="button"
+               aria-label="点击或拖入 SVG 文件">
+            <i class="ph ph-file-svg dz-icon" aria-hidden="true"></i>
+            <p class="dz-title">拖入 SVG 文件</p>
+            <p class="dz-sub">点击选择 · 支持粘贴 · 纯本地处理</p>
+          </div>
+
+          <div class="file-card" id="fileCard" hidden>
+            <div class="file-thumb" id="fileThumb"></div>
+            <div class="file-info">
+              <p class="file-name" id="fileName">-</p>
+              <p class="file-meta" id="fileMeta">-</p>
+            </div>
+            <button class="icon-btn" type="button" id="btnClear" aria-label="移除当前图形">
+              <i class="ph ph-x" aria-hidden="true"></i>
+            </button>
+          </div>
+
+          <div class="section">
+            <h3 class="section-label">优化</h3>
+            <button class="wide-btn" type="button" id="btnOptimize"
+                    style="--wide-accent: var(--ctp-green)" disabled>
+              <i class="ph ph-sparkle" aria-hidden="true"></i>
+              压缩优化 SVG
+            </button>
+            <p class="state-desc" id="optimizeResult"
+               style="max-width:none;font-size:11px;margin-top:8px;display:none"></p>
+          </div>
+
+          <div class="section">
+            <h3 class="section-label">导出</h3>
+            <div class="btn-group cols-3">
+              <button class="mini-btn" type="button" id="btnExportPNG"
+                      style="--mini-accent: var(--ctp-blue)" disabled>
+                <i class="ph ph-file-png" aria-hidden="true"></i>PNG
+              </button>
+              <button class="mini-btn" type="button" id="btnExportJPEG"
+                      style="--mini-accent: var(--ctp-peach)" disabled>
+                <i class="ph ph-file-jpg" aria-hidden="true"></i>JPEG
+              </button>
+              <button class="mini-btn" type="button" id="btnExportWebP"
+                      style="--mini-accent: var(--ctp-teal)" disabled>
+                <i class="ph ph-file-image" aria-hidden="true"></i>WebP
+              </button>
+            </div>
+            <div style="margin-top:9px">
+              <div class="field-head">
+                <label for="rangeExport">导出倍率</label>
+                <output id="outExport">2x</output>
+              </div>
+              <input type="range" id="rangeExport" min="1" max="4" step="1" value="2"
+                     style="--slider-accent: var(--ctp-blue)">
+            </div>
+          </div>
+
+          <div class="section">
+            <h3 class="section-label">Data URI</h3>
+            <div class="btn-group cols-2">
+              <button class="mini-btn" type="button" id="btnDataURI64"
+                      style="--mini-accent: var(--ctp-sky)" disabled>
+                <i class="ph ph-link" aria-hidden="true"></i>Base64
+              </button>
+              <button class="mini-btn" type="button" id="btnDataURIEnc"
+                      style="--mini-accent: var(--ctp-teal)" disabled>
+                <i class="ph ph-link-simple" aria-hidden="true"></i>URL 编码
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" data-panel="transform"
+                 style="--panel-accent: var(--ctp-blue)">
+          <h2 class="panel-title">
+            <i class="ph ph-crop" aria-hidden="true"></i>
+            <span>变换</span>
+          </h2>
+
+          <div class="field">
+            <div class="field-head">
+              <label for="rangeScale">缩放</label>
+              <output id="outScale">100%</output>
+            </div>
+            <input type="range" id="rangeScale" min="10" max="400" step="1" value="100"
+                   style="--slider-accent: var(--ctp-blue)">
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label for="rangeRotate">旋转</label>
+              <output id="outRotate">0°</output>
+            </div>
+            <input type="range" id="rangeRotate" min="-180" max="180" step="1" value="0"
+                   style="--slider-accent: var(--ctp-mauve)">
+            <div class="btn-group cols-3" style="margin-top: 9px">
+              <button class="mini-btn" type="button" data-rotate="-90"
+                      style="--mini-accent: var(--ctp-mauve)">
+                <i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>90
+              </button>
+              <button class="mini-btn" type="button" data-rotate="0"
+                      style="--mini-accent: var(--ctp-mauve)">
+                <i class="ph ph-target" aria-hidden="true"></i>归零
+              </button>
+              <button class="mini-btn" type="button" data-rotate="90"
+                      style="--mini-accent: var(--ctp-mauve)">
+                <i class="ph ph-arrow-clockwise" aria-hidden="true"></i>90
+              </button>
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label for="rangeX">水平位置</label>
+              <output id="outX">0 px</output>
+            </div>
+            <input type="range" id="rangeX" min="-500" max="500" step="1" value="0"
+                   style="--slider-accent: var(--ctp-sky)">
+          </div>
+
+          <div class="field">
+            <div class="field-head">
+              <label for="rangeY">垂直位置</label>
+              <output id="outY">0 px</output>
+            </div>
+            <input type="range" id="rangeY" min="-500" max="500" step="1" value="0"
+                   style="--slider-accent: var(--ctp-sky)">
+          </div>
+
+          <div class="field">
+            <div class="field-head"><label>镜像翻转</label></div>
+            <div class="btn-group cols-2">
+              <button class="mini-btn" type="button" id="btnFlipX" aria-pressed="false"
+                      style="--mini-accent: var(--ctp-teal)">
+                <i class="ph ph-flip-horizontal" aria-hidden="true"></i>水平
+              </button>
+              <button class="mini-btn" type="button" id="btnFlipY" aria-pressed="false"
+                      style="--mini-accent: var(--ctp-teal)">
+                <i class="ph ph-flip-vertical" aria-hidden="true"></i>垂直
+              </button>
+            </div>
+          </div>
+
+          <div class="section">
+            <button class="wide-btn" type="button" id="btnReset"
+                    style="--wide-accent: var(--ctp-red)">
+              <i class="ph ph-arrow-counter-clockwise" aria-hidden="true"></i>
+              重置全部变换
+            </button>
+          </div>
+        </section>
+
+        <section class="panel" data-panel="canvas"
+                 style="--panel-accent: var(--ctp-teal)">
+          <h2 class="panel-title">
+            <i class="ph ph-palette" aria-hidden="true"></i>
+            <span>画布外观</span>
+          </h2>
+
+          <div class="field">
+            <div class="field-head"><label>画布背景</label></div>
+            <div class="swatch-row" id="bgSwatches"></div>
+          </div>
+
+          <div class="section">
+            <div class="switch-row">
+              <span class="switch-label">
+                <i class="ph ph-drop" aria-hidden="true"></i>
+                投影阴影
+              </span>
+              <button class="switch" type="button" id="switchShadow"
+                      role="switch" aria-checked="false"
+                      style="--switch-accent: var(--ctp-teal)"
+                      aria-label="投影阴影"></button>
+            </div>
+            <div class="switch-row">
+              <span class="switch-label">
+                <i class="ph ph-eye" aria-hidden="true"></i>
+                元素高亮描边
+              </span>
+              <button class="switch" type="button" id="switchOutline"
+                      role="switch" aria-checked="false"
+                      style="--switch-accent: var(--ctp-yellow)"
+                      aria-label="元素高亮描边"></button>
+            </div>
+          </div>
+
+          <div class="section">
+            <h3 class="section-label">提示</h3>
+            <p class="state-desc" style="max-width:none;font-size:11.5px">
+              SVG 源码中可直接使用 Catppuccin 变量，例如
+              <code>fill="var(--ctp-mauve)"</code>，
+              切换主题时图形会自动跟随换色，导出时会自动解析为具体色值。
+            </p>
+          </div>
+        </section>
+
+        <section class="panel" data-panel="layers"
+                 style="--panel-accent: var(--ctp-lavender)">
+          <h2 class="panel-title">
+            <i class="ph ph-stack" aria-hidden="true"></i>
+            <span>图层与颜色</span>
+          </h2>
+
+          <div class="field">
+            <div class="field-head"><label>元素列表</label></div>
+            <div class="layer-tree" id="layerTree">
+              <p class="state-desc" style="font-size:11.5px;padding:10px 0">
+                导入图形后，这里会列出所有 SVG 元素。
+              </p>
+            </div>
+          </div>
+
+          <div class="section" id="elementInfoSection" hidden>
+            <h3 class="section-label">选中元素</h3>
+            <div class="element-card" id="elementCard">
+              <div class="element-tag" id="elementTag">-</div>
+              <div class="element-actions">
+                <button class="mini-btn" type="button" id="btnIsolate"
+                        style="--mini-accent: var(--ctp-lavender)">
+                  <i class="ph ph-eye" aria-hidden="true"></i>隔离
+                </button>
+                <button class="mini-btn" type="button" id="btnToggleVisible"
+                        style="--mini-accent: var(--ctp-yellow)">
+                  <i class="ph ph-eye-slash" aria-hidden="true"></i>隐藏
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="section" id="colorSection" hidden>
+            <h3 class="section-label">颜色编辑</h3>
+            <div class="color-swatches" id="colorSwatches"></div>
+          </div>
+        </section>
+
+        <section class="panel" data-panel="code"
+                 style="--panel-accent: var(--ctp-mauve)">
+          <h2 class="panel-title">
+            <i class="ph ph-code" aria-hidden="true"></i>
+            <span>源码</span>
+          </h2>
+
+          <div class="editor">
+            <pre aria-hidden="true"><code id="highlight"></code></pre>
+            <textarea id="code" spellcheck="false" autocapitalize="off"
+                      autocorrect="off" autocomplete="off"
+                      aria-label="SVG 源码" placeholder="在此编辑 SVG 源码…"></textarea>
+          </div>
+
+          <div class="section">
+            <div class="btn-group cols-3">
+              <button class="mini-btn" type="button" id="btnFormat"
+                      style="--mini-accent: var(--ctp-mauve)">
+                <i class="ph ph-magic-wand" aria-hidden="true"></i>整理
+              </button>
+              <button class="mini-btn" type="button" id="btnCopy2"
+                      style="--mini-accent: var(--ctp-sky)">
+                <i class="ph ph-copy" aria-hidden="true"></i>复制
+              </button>
+              <button class="mini-btn" type="button" id="btnClearCode"
+                      style="--mini-accent: var(--ctp-red)">
+                <i class="ph ph-trash" aria-hidden="true"></i>清空
+              </button>
+            </div>
+          </div>
+
+          <div class="section">
+            <h3 class="section-label">历史记录</h3>
+            <div class="btn-group cols-2">
+              <button class="mini-btn" type="button" id="btnUndo"
+                      style="--mini-accent: var(--ctp-overlay0)" disabled>
+                <i class="ph ph-arrow-u-up-left" aria-hidden="true"></i>撤销
+              </button>
+              <button class="mini-btn" type="button" id="btnRedo"
+                      style="--mini-accent: var(--ctp-overlay0)" disabled>
+                <i class="ph ph-arrow-u-up-right" aria-hidden="true"></i>重做
+              </button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </aside>
+
+    <section class="workspace" aria-label="渲染画布">
+      <div class="stage-wrap" id="stageWrap" data-bg="checker" tabindex="0"
+           aria-label="预览画布，可拖拽平移，滚轮缩放">
+        <div class="stage-bg"></div>
+
+        <div class="stage-transform">
+          <div class="svg-host" id="svgHost"></div>
+        </div>
+
+        <div class="stage-state" id="stageState">
+          <div class="state-icon is-empty" id="stateIcon">
+            <i class="ph ph-selection-plus" aria-hidden="true"></i>
+          </div>
+          <p class="state-title" id="stateTitle">还没有图形</p>
+          <p class="state-desc" id="stateDesc">
+            从左侧拖入 SVG 文件，或直接粘贴源码到画布上。
+          </p>
+        </div>
+
+        <div class="hud">
+          <button class="hud-btn" type="button" id="hudZoomOut" aria-label="缩小">
+            <i class="ph ph-minus" aria-hidden="true"></i>
+          </button>
+          <span class="hud-zoom" id="hudZoom">100%</span>
+          <button class="hud-btn" type="button" id="hudZoomIn" aria-label="放大">
+            <i class="ph ph-plus" aria-hidden="true"></i>
+          </button>
+          <button class="hud-btn" type="button" id="hudFit" aria-label="适应画布">
+            <i class="ph ph-arrows-in" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <span class="status-item">
+      <span class="dot" id="validityDot"></span>
+      <strong id="validityText">等待导入</strong>
+    </span>
+    <span class="status-item hide-sm">
+      <span>原始</span><strong id="statSize">-</strong>
+    </span>
+    <span class="status-item hide-sm">
+      <span>节点</span><strong id="statNodes">-</strong>
+    </span>
+    <span class="status-item hide-sm">
+      <span>体积</span><strong id="statBytes">-</strong>
+    </span>
+    <span class="status-spacer"></span>
+    <span class="status-item hide-sm">
+      <span>缩放</span><strong id="statZoom">100%</strong>
+    </span>
+    <span class="status-item">
+      <span>Catppuccin</span><strong id="statTheme">Mocha</strong>
+    </span>
+  </footer>
+
+  <div class="drop-overlay" aria-hidden="true">
+    <div class="drop-overlay-inner">
+      <i class="ph ph-download-simple" aria-hidden="true"></i>
+      <p>松开以导入 SVG</p>
+      <span>文件仅在浏览器本地处理</span>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">
+    <i class="ph ph-check-circle" id="toastIcon" aria-hidden="true"></i>
+    <span id="toastText"></span>
+  </div>
+
+  <input type="file" id="fileInput" accept=".svg,image/svg+xml" hidden>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ==========================================================
+     常量
+     ========================================================== */
+  const PALETTE = [
+    'rosewater','flamingo','pink','mauve','red','maroon','peach',
+    'yellow','green','teal','sky','sapphire','blue','lavender'
+  ];
+
+  const BASE_SIDE = 420;
+  const MIN_SCALE = 0.1;
+  const MAX_SCALE = 4;
+  const MAX_HISTORY = 40;
+  const MAX_CANVAS_DIM = 16384;
+
+  const SHADOW_STYLE =
+    ':host{display:block;line-height:0;}' +
+    'svg{display:block;overflow:visible;}' +
+    'svg[data-outline="true"] *{outline:1px dashed rgba(249,226,175,.75);outline-offset:2px;}';
+
+  const mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const $ = (id) => document.getElementById(id);
+
+  const els = {
+    spectrum:     $('spectrum'),
+    btnUpload:    $('btnUpload'),
+    btnCopy:      $('btnCopy'),
+    btnDownload:  $('btnDownload'),
+    btnTheme:     $('btnTheme'),
+    themeIcon:    $('themeIcon'),
+    themeName:    $('themeName'),
+    fileInput:    $('fileInput'),
+    dropzone:     $('dropzone'),
+    fileCard:     $('fileCard'),
+    fileThumb:    $('fileThumb'),
+    fileName:     $('fileName'),
+    fileMeta:     $('fileMeta'),
+    btnClear:     $('btnClear'),
+    rangeScale:   $('rangeScale'), outScale:  $('outScale'),
+    rangeRotate:  $('rangeRotate'), outRotate: $('outRotate'),
+    rangeX:       $('rangeX'), outX: $('outX'),
+    rangeY:       $('rangeY'), outY: $('outY'),
+    btnFlipX:     $('btnFlipX'), btnFlipY: $('btnFlipY'),
+    btnReset:     $('btnReset'),
+    bgSwatches:   $('bgSwatches'),
+    switchShadow: $('switchShadow'),
+    switchOutline:$('switchOutline'),
+    code:         $('code'),
+    highlight:    $('highlight'),
+    highlightPre: null,
+    btnFormat:    $('btnFormat'),
+    btnCopy2:     $('btnCopy2'),
+    btnClearCode: $('btnClearCode'),
+    btnUndo:      $('btnUndo'),
+    btnRedo:      $('btnRedo'),
+    stageWrap:    $('stageWrap'),
+    svgHost:      $('svgHost'),
+    stageState:   $('stageState'),
+    stateIcon:    $('stateIcon'),
+    stateTitle:   $('stateTitle'),
+    stateDesc:    $('stateDesc'),
+    hudZoom:      $('hudZoom'),
+    hudZoomIn:    $('hudZoomIn'),
+    hudZoomOut:   $('hudZoomOut'),
+    hudFit:       $('hudFit'),
+    validityDot:  $('validityDot'),
+    validityText: $('validityText'),
+    statSize:     $('statSize'),
+    statNodes:    $('statNodes'),
+    statBytes:    $('statBytes'),
+    statZoom:     $('statZoom'),
+    statTheme:    $('statTheme'),
+    btnOptimize:  $('btnOptimize'),
+    optimizeResult: $('optimizeResult'),
+    btnExportPNG: $('btnExportPNG'),
+    btnExportJPEG:$('btnExportJPEG'),
+    btnExportWebP:$('btnExportWebP'),
+    rangeExport:  $('rangeExport'), outExport: $('outExport'),
+    btnDataURI64: $('btnDataURI64'),
+    btnDataURIEnc:$('btnDataURIEnc'),
+    layerTree:    $('layerTree'),
+    elementInfoSection: $('elementInfoSection'),
+    elementCard:  $('elementCard'),
+    elementTag:   $('elementTag'),
+    btnIsolate:   $('btnIsolate'),
+    btnToggleVisible: $('btnToggleVisible'),
+    colorSection: $('colorSection'),
+    colorSwatches:$('colorSwatches'),
+    toast:        $('toast'),
+    toastIcon:    $('toastIcon'),
+    toastText:    $('toastText')
+  };
+  els.highlightPre = els.highlight.parentElement;
+
+  /* ==========================================================
+     状态
+     ========================================================== */
+  const state = {
+    svgText: '',
+    fileName: '',
+    naturalW: 0,
+    naturalH: 0,
+    nodeCount: 0,
+    scale: 1,
+    rotate: 0,
+    offsetX: 0,
+    offsetY: 0,
+    flipX: false,
+    flipY: false,
+    bg: 'checker',
+    shadow: false,
+    outline: false,
+    selectedIndex: -1,
+    hiddenIndices: new Set(),
+    isolatedIndex: -1,
+    history: [],
+    historyIndex: -1,
+    exportScale: 2
+  };
+
+  let shadowRoot = null;
+
+  /* ==========================================================
+     工具函数
+     ========================================================== */
+  function esc(s) {
+    return String(s).replace(/[&<>]/g, (c) =>
+      c === '&' ? '&amp;' : c === '<' ? '&lt;' : '&gt;');
+  }
+  function escAttr(s) {
+    return String(s).replace(/[&<>"]/g, (c) =>
+      c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : '&quot;');
+  }
+  function fmtBytes(n) {
+    if (!n) return '0 B';
+    if (n < 1024) return n + ' B';
+    return (n / 1024).toFixed(1) + ' KB';
+  }
+  function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+
+  function showToast(text, type) {
+    els.toastText.textContent = text;
+    els.toastIcon.className = 'ph ' +
+      (type === 'error' ? 'ph-warning-circle' : 'ph-check-circle');
+    els.toast.className = 'toast is-visible ' +
+      (type === 'error' ? 'is-error' : 'is-success');
+    clearTimeout(showToast._timer);
+    showToast._timer = setTimeout(function () {
+      els.toast.className = 'toast';
+    }, 2400);
+  }
+
+  // 补全 xmlns 命名空间
+  function ensureSvgNamespace(text) {
+    if (/<svg[^>]*\sxmlns\s*=/i.test(text)) return text;
+    return text.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+  }
+
+  // 把 SVG 里所有 var(--ctp-xxx) 解析为当前主题下的具体色值
+  function resolveCssVarsInString(str, cache) {
+    const rootStyle = getComputedStyle(document.documentElement);
+    return str.replace(/var\(\s*(--[\w-]+)\s*(?:,\s*([^)]*))?\)/g,
+      function (m, name, fallback) {
+        if (cache[name] === undefined) {
+          const v = rootStyle.getPropertyValue(name).trim();
+          cache[name] = v || (fallback ? fallback.trim() : '');
+        }
+        return cache[name] || (fallback ? fallback.trim() : '');
+      });
+  }
+
+  // 从 SVG 元素中解析出固有尺寸
+  function readSvgDimensions(svgEl) {
+    let w = NaN, h = NaN;
+    const vb = svgEl.getAttribute('viewBox');
+    if (vb) {
+      const parts = vb.trim().split(/[\s,]+/).map(Number);
+      if (parts.length === 4 && parts.every(isFinite) && parts[2] > 0 && parts[3] > 0) {
+        w = parts[2]; h = parts[3];
+      }
+    }
+    if (!isFinite(w) || w <= 0) {
+      const v = parseFloat(svgEl.getAttribute('width'));
+      if (isFinite(v) && v > 0) w = v;
+    }
+    if (!isFinite(h) || h <= 0) {
+      const v = parseFloat(svgEl.getAttribute('height'));
+      if (isFinite(v) && v > 0) h = v;
+    }
+    if (!isFinite(w) || w <= 0) w = 300;
+    if (!isFinite(h) || h <= 0) h = 150;
+    return { w: w, h: h };
+  }
+
+  /* ==========================================================
+     光谱条
+     ========================================================== */
+  els.spectrum.innerHTML = PALETTE
+    .map((n) => '<span style="background: var(--ctp-' + n + ')"></span>')
+    .join('');
+
+  /* ==========================================================
+     语法高亮
+     ========================================================== */
+  function highlightTag(tag) {
+    let out = '';
+    let i = 0;
+    const isClose = tag.startsWith('</');
+    const openTok = isClose ? '</' : '<';
+    out += '<span class="t-p">' + esc(openTok) + '</span>';
+    i = openTok.length;
+
+    const nameMatch = /^[A-Za-z_][\w:.-]*/.exec(tag.slice(i));
+    if (nameMatch) {
+      out += '<span class="t-t">' + esc(nameMatch[0]) + '</span>';
+      i += nameMatch[0].length;
+    }
+
+    let bodyEnd = tag.length;
+    let closer = '';
+    if (tag.endsWith('/>')) { bodyEnd = tag.length - 2; closer = '/>'; }
+    else if (tag.endsWith('>')) { bodyEnd = tag.length - 1; closer = '>'; }
+
+    const body = tag.slice(i, Math.max(i, bodyEnd));
+    const attrRe = /([A-Za-z_:][\w:.-]*)(\s*=\s*)(["'])([\s\S]*?)\3|[\s]+/g;
+
+    let last = 0, m;
+    while ((m = attrRe.exec(body)) !== null) {
+      if (m.index > last) out += esc(body.slice(last, m.index));
+      if (m[1] === undefined) {
+        out += esc(m[0]);
+      } else {
+        out += '<span class="t-a">' + esc(m[1]) + '</span>';
+        out += '<span class="t-p">' + esc(m[2]) + '</span>';
+        out += '<span class="t-v">' + esc(m[3]) + esc(m[4]) + esc(m[3]) + '</span>';
+      }
+      last = attrRe.lastIndex;
+      if (m[0].length === 0) attrRe.lastIndex += 1;
+    }
+    if (last < body.length) out += esc(body.slice(last));
+    if (closer) out += '<span class="t-p">' + esc(closer) + '</span>';
+    return out;
+  }
+
+  function highlightSVG(code) {
+    const out = [];
+    let i = 0;
+    const n = code.length;
+
+    while (i < n) {
+      if (code.startsWith('<!--', i)) {
+        let end = code.indexOf('-->', i);
+        end = end === -1 ? n : end + 3;
+        out.push('<span class="t-c">' + esc(code.slice(i, end)) + '</span>');
+        i = end;
+        continue;
+      }
+      if (code[i] === '<') {
+        let end = code.indexOf('>', i);
+        end = end === -1 ? n : end + 1;
+        out.push(highlightTag(code.slice(i, end)));
+        i = end;
+        continue;
+      }
+      let end = code.indexOf('<', i);
+      end = end === -1 ? n : end;
+      const seg = code.slice(i, end);
+      out.push(seg.trim() ? '<span class="t-x">' + esc(seg) + '</span>' : esc(seg));
+      i = end;
+    }
+    return out.join('');
+  }
+
+  /* ==========================================================
+     SVG 归一化
+     ========================================================== */
+  function normalizeSVG(text) {
+    const prepared = ensureSvgNamespace(text);
+    const doc = new DOMParser().parseFromString(prepared, 'image/svg+xml');
+    if (doc.getElementsByTagName('parsererror').length > 0) throw new Error('parse');
+
+    const svg = doc.documentElement;
+    if (!svg || svg.nodeName.toLowerCase() !== 'svg') throw new Error('root');
+
+    const dims = readSvgDimensions(svg);
+    const w = dims.w, h = dims.h;
+
+    if (!svg.getAttribute('viewBox')) {
+      svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    }
+
+    const maxSide = Math.max(w, h);
+    const k = BASE_SIDE / maxSide;
+
+    svg.setAttribute('width', String(Math.round(w * k)));
+    svg.setAttribute('height', String(Math.round(h * k)));
+
+    const nodeCount = svg.querySelectorAll('*').length;
+
+    return {
+      markup: svg.outerHTML,
+      naturalW: Math.round(w),
+      naturalH: Math.round(h),
+      nodeCount
+    };
+  }
+
+  /* ==========================================================
+     渲染
+     ========================================================== */
+  function showState(kind, title, descHtml) {
+    els.stageState.hidden = false;
+    els.stateIcon.className = 'state-icon ' + (kind === 'error' ? 'is-error' : 'is-empty');
+    els.stateIcon.innerHTML = '<i class="ph ' +
+      (kind === 'error' ? 'ph-warning-circle' : 'ph-selection-plus') +
+      '" aria-hidden="true"></i>';
+    els.stateTitle.textContent = title;
+    els.stateDesc.innerHTML = descHtml;
+  }
+  function hideState() { els.stageState.hidden = true; }
+
+  function setEmptyUI() {
+    els.validityDot.className = 'dot';
+    els.validityText.textContent = '等待导入';
+    els.statSize.textContent = '-';
+    els.statNodes.textContent = '-';
+    els.statBytes.textContent = '-';
+    [els.btnCopy, els.btnDownload, els.btnOptimize,
+     els.btnExportPNG, els.btnExportJPEG, els.btnExportWebP,
+     els.btnDataURI64, els.btnDataURIEnc].forEach(function (b) {
+      b.disabled = true;
+    });
+    els.fileCard.hidden = true;
+    els.optimizeResult.style.display = 'none';
+    els.layerTree.innerHTML =
+      '<p class="state-desc" style="font-size:11.5px;padding:10px 0">导入图形后，这里会列出所有 SVG 元素。</p>';
+    els.elementInfoSection.hidden = true;
+    els.colorSection.hidden = true;
+    state.selectedIndex = -1;
+    state.hiddenIndices.clear();
+    state.isolatedIndex = -1;
+  }
+
+  function renderSVG(text, meta) {
+    if (shadowRoot) shadowRoot.innerHTML = '';
+
+    if (!text || !text.trim()) {
+      showState('empty', '还没有图形',
+        '从左侧拖入 SVG 文件，或直接粘贴源码到画布上。');
+      setEmptyUI();
+      return;
+    }
+
+    let parsed;
+    try {
+      parsed = normalizeSVG(text);
+    } catch (err) {
+      showState('error', 'SVG 解析失败',
+        '请检查标签闭合与属性引号是否完整。');
+      els.validityDot.className = 'dot is-error';
+      els.validityText.textContent = '语法错误';
+      els.statSize.textContent = '-';
+      els.statNodes.textContent = '-';
+      els.statBytes.textContent = fmtBytes(new Blob([text]).size);
+      els.btnCopy.disabled = false;
+      els.btnDownload.disabled = false;
+      els.btnOptimize.disabled = true;
+      return;
+    }
+
+    if (!shadowRoot) {
+      shadowRoot = els.svgHost.attachShadow({ mode: 'open' });
+    }
+    shadowRoot.innerHTML = '<style>' + SHADOW_STYLE + '</style>' + parsed.markup;
+
+    hideState();
+
+    state.svgText = text;
+    state.naturalW = parsed.naturalW;
+    state.naturalH = parsed.naturalH;
+    state.nodeCount = parsed.nodeCount;
+    state.selectedIndex = -1;
+    state.hiddenIndices.clear();
+    state.isolatedIndex = -1;
+
+    const bytes = new Blob([text]).size;
+    els.validityDot.className = 'dot is-ok';
+    els.validityText.textContent = '已就绪';
+    els.statSize.textContent = parsed.naturalW + ' × ' + parsed.naturalH;
+    els.statNodes.textContent = String(parsed.nodeCount);
+    els.statBytes.textContent = fmtBytes(bytes);
+    [els.btnCopy, els.btnDownload, els.btnOptimize,
+     els.btnExportPNG, els.btnExportJPEG, els.btnExportWebP,
+     els.btnDataURI64, els.btnDataURIEnc].forEach(function (b) {
+      b.disabled = false;
+    });
+
+    if (meta && meta.fileName) {
+      els.fileCard.hidden = false;
+      els.fileName.textContent = meta.fileName;
+      els.fileName.title = meta.fileName;
+      els.fileMeta.textContent = fmtBytes(bytes) + ' · ' +
+        parsed.naturalW + '×' + parsed.naturalH;
+      els.fileThumb.innerHTML = parsed.markup;
+      const tsvg = els.fileThumb.querySelector('svg');
+      if (tsvg) {
+        tsvg.removeAttribute('width');
+        tsvg.removeAttribute('height');
+        tsvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      }
+    }
+
+    buildLayerTree();
+    pushHistory(text);
+  }
+
+  /* ==========================================================
+     图层树
+     ========================================================== */
+  function getSvgRoot() {
+    return shadowRoot ? shadowRoot.querySelector('svg') : null;
+  }
+
+  function getAllSvgNodes() {
+    const svg = getSvgRoot();
+    if (!svg) return [];
+    return [svg].concat(Array.from(svg.querySelectorAll('*')));
+  }
+
+  function buildLayerTree() {
+    const all = getAllSvgNodes();
+    if (all.length <= 1) {
+      els.layerTree.innerHTML =
+        '<p class="state-desc" style="font-size:11.5px;padding:10px 0">导入图形后，这里会列出所有 SVG 元素。</p>';
+      els.elementInfoSection.hidden = true;
+      els.colorSection.hidden = true;
+      return;
+    }
+
+    const root = all[0];
+    let html = '';
+
+    for (let i = 1; i < all.length; i++) {
+      const el = all[i];
+      const tag = el.tagName;
+      const depth = getDepth(el, root);
+      const isHidden = state.hiddenIndices.has(i);
+      const isIsolated = state.isolatedIndex === i;
+
+      let colorVal = '';
+      const fill = el.getAttribute('fill') || (el.style && el.style.fill);
+      const stroke = el.getAttribute('stroke') || (el.style && el.style.stroke);
+      const c = fill && fill !== 'none' ? fill : (stroke && stroke !== 'none' ? stroke : '');
+      if (c && !c.startsWith('url')) colorVal = c;
+
+      html += '<div class="layer-item' +
+        (state.selectedIndex === i ? ' is-selected' : '') +
+        '" data-idx="' + i + '" style="padding-left:' + (8 + depth * 14) + 'px">' +
+        '<i class="ph ' + (isHidden ? 'ph-eye-slash' : 'ph-' + tagIcon(tag)) + '" aria-hidden="true"></i>' +
+        '<span class="layer-tag">' + esc(tag) + '</span>' +
+        (colorVal ? '<span class="layer-dim">' + esc(colorVal) + '</span>' : '') +
+        (isIsolated ? '<span class="layer-dim" style="color:var(--ctp-lavender)">隔离</span>' : '') +
+        '</div>';
+    }
+
+    els.layerTree.innerHTML = html;
+
+    els.layerTree.querySelectorAll('.layer-item').forEach(function (item) {
+      item.addEventListener('click', function () {
+        const idx = parseInt(item.dataset.idx, 10);
+        selectElementByIndex(idx);
+      });
+    });
+  }
+
+  function getDepth(el, root) {
+    let d = 0;
+    let p = el.parentElement;
+    while (p && p !== root) { d++; p = p.parentElement; }
+    return d;
+  }
+
+  function tagIcon(tag) {
+    const map = {
+      rect: 'rectangle', circle: 'circle', ellipse: 'circle',
+      line: 'line-segment', polyline: 'polyline', polygon: 'polygon',
+      path: 'bezier-curve', text: 'text-t', g: 'stack-simple',
+      defs: 'gear-six', linearGradient: 'gradient', radialGradient: 'gradient',
+      filter: 'funnel', use: 'link', image: 'image', mask: 'selection',
+      clipPath: 'scissors', stop: 'circle-half', style: 'paint-brush'
+    };
+    return map[tag] || 'square';
+  }
+
+  function selectElementByIndex(idx) {
+    const all = getAllSvgNodes();
+    if (!all[idx]) return;
+    state.selectedIndex = idx;
+
+    els.layerTree.querySelectorAll('.layer-item').forEach(function (item) {
+      const i = parseInt(item.dataset.idx, 10);
+      item.classList.toggle('is-selected', i === idx);
+    });
+
+    const el = all[idx];
+    els.elementInfoSection.hidden = false;
+    els.elementTag.textContent = '<' + el.tagName + '>';
+
+    const isHidden = state.hiddenIndices.has(idx);
+    els.btnToggleVisible.innerHTML = isHidden
+      ? '<i class="ph ph-eye" aria-hidden="true"></i>显示'
+      : '<i class="ph ph-eye-slash" aria-hidden="true"></i>隐藏';
+
+    buildColorSwatches(el, idx);
+  }
+
+  /* ==========================================================
+     颜色编辑
+     ========================================================== */
+  function collectElementColors(el) {
+    const colors = new Set();
+    const scope = [el].concat(Array.from(el.querySelectorAll('*')));
+    scope.forEach(function (node) {
+      ['fill', 'stroke', 'stop-color', 'color'].forEach(function (attr) {
+        const v = node.getAttribute(attr);
+        if (v && v !== 'none' && v !== 'currentColor' &&
+            !v.startsWith('url') && !v.startsWith('var(')) {
+          colors.add(v);
+        }
+      });
+      if (node.style) {
+        ['fill', 'stroke'].forEach(function (prop) {
+          const v = node.style[prop];
+          if (v && v !== 'none' && !v.startsWith('url') && !v.startsWith('var(')) {
+            colors.add(v);
+          }
+        });
+      }
+    });
+    return Array.from(colors);
+  }
+
+  function buildColorSwatches(el, idx) {
+    const used = collectElementColors(el);
+    const catppuccin = PALETTE.map((n) => 'var(--ctp-' + n + ')');
+    const list = Array.from(new Set(used.concat(catppuccin)));
+
+    els.colorSection.hidden = false;
+    els.colorSwatches.innerHTML = list.map(function (c) {
+      const active = used.indexOf(c) >= 0 ? ' is-active' : '';
+      return '<button class="color-chip' + active + '" type="button" ' +
+             'data-color="' + escAttr(c) + '" ' +
+             'aria-label="' + escAttr(c) + '" title="' + escAttr(c) + '" ' +
+             'style="background:' + escAttr(c) + '"></button>';
+    }).join('');
+
+    els.colorSwatches.querySelectorAll('.color-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () {
+        applyColorToElement(el, chip.dataset.color);
+      });
+    });
+  }
+
+  function applyColorToElement(el, newColor) {
+    const scope = [el].concat(Array.from(el.querySelectorAll('*')));
+    let changed = false;
+
+    scope.forEach(function (node) {
+      ['fill', 'stroke'].forEach(function (attr) {
+        const v = node.getAttribute(attr);
+        if (v && v !== 'none' && !v.startsWith('url')) {
+          node.setAttribute(attr, newColor);
+          changed = true;
+        }
+        if (node.style && node.style[attr]) {
+          node.style[attr] = newColor;
+          changed = true;
+        }
+      });
+      if (node.tagName === 'stop') {
+        if (node.getAttribute('stop-color')) {
+          node.setAttribute('stop-color', newColor);
+          changed = true;
+        }
+      }
+    });
+
+    if (changed) {
+      syncCodeFromShadow();
+      showToast('颜色已更新', 'success');
+      const all = getAllSvgNodes();
+      if (all[state.selectedIndex]) {
+        buildColorSwatches(all[state.selectedIndex], state.selectedIndex);
+      }
+    }
+  }
+
+  // 把 Shadow DOM 里当前 SVG 内容同步回代码编辑器（不重建 Shadow DOM）
+  function syncCodeFromShadow() {
+    const svg = getSvgRoot();
+    if (!svg) return;
+    const clone = svg.cloneNode(true);
+    if (!clone.getAttribute('viewBox')) {
+      clone.setAttribute('viewBox', '0 0 ' + state.naturalW + ' ' + state.naturalH);
+    }
+    clone.setAttribute('width', String(state.naturalW));
+    clone.setAttribute('height', String(state.naturalH));
+
+    const text = new XMLSerializer().serializeToString(clone);
+    els.code.value = text;
+    syncHighlight();
+    state.svgText = text;
+    const bytes = new Blob([text]).size;
+    els.statBytes.textContent = fmtBytes(bytes);
+    els.statNodes.textContent = String(clone.querySelectorAll('*').length);
+  }
+
+  /* ==========================================================
+     历史记录
+     ========================================================== */
+  function pushHistory(text) {
+    if (!text) return;
+    if (state.history[state.historyIndex] === text) return;
+
+    state.history = state.history.slice(0, state.historyIndex + 1);
+    state.history.push(text);
+    if (state.history.length > MAX_HISTORY) state.history.shift();
+    state.historyIndex = state.history.length - 1;
+    updateHistoryButtons();
+  }
+
+  function updateHistoryButtons() {
+    els.btnUndo.disabled = state.historyIndex <= 0;
+    els.btnRedo.disabled = state.historyIndex >= state.history.length - 1;
+  }
+
+  function undo() {
+    if (state.historyIndex <= 0) return;
+    state.historyIndex--;
+    const text = state.history[state.historyIndex];
+    els.code.value = text;
+    syncHighlight();
+    renderSVG(text);
+    updateHistoryButtons();
+    showToast('已撤销', 'success');
+  }
+
+  function redo() {
+    if (state.historyIndex >= state.history.length - 1) return;
+    state.historyIndex++;
+    const text = state.history[state.historyIndex];
+    els.code.value = text;
+    syncHighlight();
+    renderSVG(text);
+    updateHistoryButtons();
+    showToast('已重做', 'success');
+  }
+
+  /* ==========================================================
+     变换
+     ========================================================== */
+  function applyTransform() {
+    const s = state.scale;
+    const sx = state.flipX ? -s : s;
+    const sy = state.flipY ? -s : s;
+    els.svgHost.style.transform =
+      'translate3d(' + state.offsetX + 'px,' + state.offsetY + 'px,0) ' +
+      'rotate(' + state.rotate + 'deg) ' +
+      'scale(' + sx + ',' + sy + ')';
+
+    const pct = Math.round(state.scale * 100);
+    els.hudZoom.textContent = pct + '%';
+    els.statZoom.textContent = pct + '%';
+  }
+
+  function syncControls() {
+    const pct = Math.round(state.scale * 100);
+    els.rangeScale.value = String(pct);
+    els.outScale.textContent = pct + '%';
+
+    els.rangeRotate.value = String(state.rotate);
+    els.outRotate.textContent = state.rotate + '°';
+
+    els.rangeX.value = String(state.offsetX);
+    els.outX.textContent = Math.round(state.offsetX) + ' px';
+
+    els.rangeY.value = String(state.offsetY);
+    els.outY.textContent = Math.round(state.offsetY) + ' px';
+
+    els.btnFlipX.setAttribute('aria-pressed', state.flipX ? 'true' : 'false');
+    els.btnFlipY.setAttribute('aria-pressed', state.flipY ? 'true' : 'false');
+
+    applyTransform();
+  }
+
+  function resetTransform() {
+    state.scale = 1;
+    state.rotate = 0;
+    state.offsetX = 0;
+    state.offsetY = 0;
+    state.flipX = false;
+    state.flipY = false;
+    syncControls();
+  }
+
+  /* ==========================================================
+     缩放
+     ========================================================== */
+  function zoomAt(clientX, clientY, factor) {
+    const rect = els.stageWrap.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const mx = clientX - cx;
+    const my = clientY - cy;
+
+    const oldS = state.scale;
+    const newS = clamp(oldS * factor, MIN_SCALE, MAX_SCALE);
+    if (newS === oldS) return;
+
+    const px = (mx - state.offsetX) / oldS;
+    const py = (my - state.offsetY) / oldS;
+
+    state.offsetX = mx - px * newS;
+    state.offsetY = my - py * newS;
+    state.scale = newS;
+    syncControls();
+  }
+
+  function zoomCenter(factor) {
+    const rect = els.stageWrap.getBoundingClientRect();
+    zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, factor);
+  }
+
+  /* ==========================================================
+     指针拖拽
+     ========================================================== */
+  let dragging = false;
+  let dragX = 0, dragY = 0;
+  let dragStartX = 0, dragStartY = 0;
+
+  els.stageWrap.addEventListener('pointerdown', function (e) {
+    if (e.target.closest('.hud')) return;
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+
+    dragging = true;
+    dragX = e.clientX;
+    dragY = e.clientY;
+    dragStartX = state.offsetX;
+    dragStartY = state.offsetY;
+    els.stageWrap.classList.add('is-dragging');
+    try { els.stageWrap.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+
+  els.stageWrap.addEventListener('pointermove', function (e) {
+    if (!dragging) return;
+    state.offsetX = dragStartX + (e.clientX - dragX);
+    state.offsetY = dragStartY + (e.clientY - dragY);
+    syncControls();
+  });
+
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    els.stageWrap.classList.remove('is-dragging');
+    try { els.stageWrap.releasePointerCapture(e.pointerId); } catch (err) {}
+  }
+  els.stageWrap.addEventListener('pointerup', endDrag);
+  els.stageWrap.addEventListener('pointercancel', endDrag);
+
+  els.stageWrap.addEventListener('wheel', function (e) {
+    if (!state.svgText) return;
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+    zoomAt(e.clientX, e.clientY, factor);
+  }, { passive: false });
+
+  els.stageWrap.addEventListener('dblclick', function (e) {
+    if (e.target.closest('.hud')) return;
+    resetTransform();
+  });
+
+  /* ==========================================================
+     变换控件
+     ========================================================== */
+  els.rangeScale.addEventListener('input', function () {
+    state.scale = clamp(parseFloat(this.value) / 100, MIN_SCALE, MAX_SCALE);
+    syncControls();
+  });
+  els.rangeRotate.addEventListener('input', function () {
+    state.rotate = parseInt(this.value, 10) || 0;
+    syncControls();
+  });
+  els.rangeX.addEventListener('input', function () {
+    state.offsetX = parseInt(this.value, 10) || 0;
+    syncControls();
+  });
+  els.rangeY.addEventListener('input', function () {
+    state.offsetY = parseInt(this.value, 10) || 0;
+    syncControls();
+  });
+
+  document.querySelectorAll('[data-rotate]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      const val = parseInt(btn.dataset.rotate, 10);
+      if (val === 0) { state.rotate = 0; }
+      else {
+        let next = state.rotate + val;
+        while (next > 180) next -= 360;
+        while (next < -180) next += 360;
+        state.rotate = next;
+      }
+      syncControls();
+    });
+  });
+
+  els.btnFlipX.addEventListener('click', function () {
+    state.flipX = !state.flipX;
+    syncControls();
+  });
+  els.btnFlipY.addEventListener('click', function () {
+    state.flipY = !state.flipY;
+    syncControls();
+  });
+  els.btnReset.addEventListener('click', resetTransform);
+  els.hudZoomIn.addEventListener('click', function () { zoomCenter(1.2); });
+  els.hudZoomOut.addEventListener('click', function () { zoomCenter(1 / 1.2); });
+  els.hudFit.addEventListener('click', resetTransform);
+
+  /* ==========================================================
+     画布背景
+     ========================================================== */
+  const BG_OPTIONS = [
+    { id: 'checker', cls: 'swatch-checker', label: '透明棋盘' },
+    { id: 'grid',    cls: 'swatch-grid',    label: '网格' },
+    { id: 'base',    cls: '',  color: 'var(--ctp-base)',    label: 'Base' },
+    { id: 'crust',   cls: '',  color: 'var(--ctp-crust)',   label: 'Crust' },
+    { id: 'white',   cls: '',  color: '#ffffff',            label: '白色' },
+    { id: 'black',   cls: '',  color: '#000000',            label: '黑色' }
+  ];
+
+  function applyBg(id) {
+    const opt = BG_OPTIONS.find((o) => o.id === id) || BG_OPTIONS[0];
+    if (opt.id === 'checker' || opt.id === 'grid') {
+      els.stageWrap.dataset.bg = opt.id;
+      els.stageWrap.style.removeProperty('--stage-bg-color');
+    } else {
+      els.stageWrap.dataset.bg = 'solid';
+      els.stageWrap.style.setProperty('--stage-bg-color', opt.color);
+    }
+    els.bgSwatches.querySelectorAll('.swatch').forEach(function (sw) {
+      sw.setAttribute('aria-pressed', sw.dataset.bgId === opt.id ? 'true' : 'false');
+    });
+  }
+
+  els.bgSwatches.innerHTML = BG_OPTIONS.map(function (opt) {
+    const style = opt.color ? '--sw-bg:' + opt.color + ';' : '';
+    return '<button class="swatch ' + opt.cls + '" type="button" ' +
+           'data-bg-id="' + opt.id + '" aria-pressed="false" ' +
+           'aria-label="' + opt.label + '" title="' + opt.label + '" ' +
+           'style="' + style + '"></button>';
+  }).join('');
+
+  els.bgSwatches.addEventListener('click', function (e) {
+    const btn = e.target.closest('.swatch');
+    if (!btn) return;
+    applyBg(btn.dataset.bgId);
+  });
+  applyBg('checker');
+
+  /* ==========================================================
+     阴影与描边
+     ========================================================== */
+  els.switchShadow.addEventListener('click', function () {
+    state.shadow = !state.shadow;
+    this.setAttribute('aria-checked', state.shadow ? 'true' : 'false');
+    els.svgHost.classList.toggle('is-shadowed', state.shadow);
+  });
+
+  els.switchOutline.addEventListener('click', function () {
+    state.outline = !state.outline;
+    this.setAttribute('aria-checked', state.outline ? 'true' : 'false');
+    const svg = getSvgRoot();
+    if (svg) {
+      if (state.outline) {
+        svg.setAttribute('data-outline', 'true');
+      } else {
+        svg.removeAttribute('data-outline');
+      }
+    }
+  });
+
+  /* ==========================================================
+     文件导入
+     ========================================================== */
+  function loadFile(file) {
+    if (!file) return;
+    const isSVG = /svg/i.test(file.type) || /\.svg$/i.test(file.name);
+    if (!isSVG) {
+      showState('error', '不支持的文件类型',
+        '请选择扩展名为 <code>.svg</code> 的文件。');
+      els.validityDot.className = 'dot is-error';
+      els.validityText.textContent = '文件类型错误';
+      showToast('请选择 SVG 文件', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const text = String(e.target.result || '');
+      els.code.value = text;
+      syncHighlight();
+      renderSVG(text, { fileName: file.name });
+      resetTransform();
+      showToast('已导入 ' + file.name, 'success');
+    };
+    reader.onerror = function () {
+      showState('error', '文件读取失败', '请重试，或换一个文件。');
+      showToast('文件读取失败', 'error');
+    };
+    reader.readAsText(file);
+  }
+
+  els.fileInput.addEventListener('change', function () {
+    const f = this.files && this.files[0];
+    if (f) loadFile(f);
+    this.value = '';
+  });
+  els.btnUpload.addEventListener('click', function () { els.fileInput.click(); });
+  els.dropzone.addEventListener('click', function () { els.fileInput.click(); });
+  els.dropzone.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); els.fileInput.click(); }
+  });
+
+  els.btnClear.addEventListener('click', function () {
+    els.code.value = '';
+    state.svgText = '';
+    if (shadowRoot) shadowRoot.innerHTML = '';
+    syncHighlight();
+    renderSVG('');
+    resetTransform();
+    state.history = [];
+    state.historyIndex = -1;
+    updateHistoryButtons();
+  });
+
+  /* ==========================================================
+     全局拖放
+     ========================================================== */
+  let dragDepth = 0;
+  document.addEventListener('dragenter', function (e) {
+    e.preventDefault();
+    dragDepth += 1;
+    document.body.classList.add('is-dragging-file');
+  });
+  document.addEventListener('dragover', function (e) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  });
+  document.addEventListener('dragleave', function (e) {
+    e.preventDefault();
+    dragDepth -= 1;
+    if (dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('is-dragging-file'); }
+  });
+  document.addEventListener('drop', function (e) {
+    e.preventDefault();
+    dragDepth = 0;
+    document.body.classList.remove('is-dragging-file');
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    const f = dt.files && dt.files[0];
+    if (f) { loadFile(f); return; }
+    const text = dt.getData && dt.getData('text/plain');
+    if (text && /<svg[\s>]/i.test(text)) {
+      els.code.value = text;
+      syncHighlight();
+      renderSVG(text, { fileName: 'pasted.svg' });
+      resetTransform();
+    }
+  });
+
+  document.addEventListener('paste', function (e) {
+    const target = e.target;
+    if (target && target.tagName === 'TEXTAREA') return;
+    const text = e.clipboardData && e.clipboardData.getData('text/plain');
+    if (text && /<svg[\s>]/i.test(text)) {
+      e.preventDefault();
+      els.code.value = text;
+      syncHighlight();
+      renderSVG(text, { fileName: 'pasted.svg' });
+      resetTransform();
+    }
+  });
+
+  /* ==========================================================
+     代码编辑器
+     ========================================================== */
+  function syncHighlight() {
+    els.highlight.innerHTML = highlightSVG(els.code.value);
+  }
+
+  let codeDebounce = 0;
+  els.code.addEventListener('input', function () {
+    syncHighlight();
+    clearTimeout(codeDebounce);
+    codeDebounce = setTimeout(function () {
+      renderSVG(els.code.value);
+    }, 300);
+  });
+
+  els.code.addEventListener('scroll', function () {
+    els.highlightPre.scrollTop = els.code.scrollTop;
+    els.highlightPre.scrollLeft = els.code.scrollLeft;
+  }, { passive: true });
+
+  els.code.addEventListener('keydown', function (e) {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = this.selectionStart;
+      const end = this.selectionEnd;
+      const v = this.value;
+      this.value = v.slice(0, start) + '  ' + v.slice(end);
+      this.selectionStart = this.selectionEnd = start + 2;
+      syncHighlight();
+    }
+  });
+
+  els.btnFormat.addEventListener('click', function () {
+    const text = els.code.value.trim();
+    if (!text) return;
+    try {
+      const prepared = ensureSvgNamespace(text);
+      const doc = new DOMParser().parseFromString(prepared, 'image/svg+xml');
+      if (doc.getElementsByTagName('parsererror').length > 0) return;
+      const svg = doc.documentElement;
+      const formatted = formatNode(svg, 0);
+      els.code.value = formatted;
+      syncHighlight();
+      renderSVG(formatted);
+      showToast('代码已整理', 'success');
+    } catch (err) { showToast('整理失败', 'error'); }
+  });
+
+  function formatNode(node, depth) {
+    const pad = '  '.repeat(depth);
+    const name = node.nodeName;
+    if (node.nodeType === 3) {
+      const t = node.textContent.trim();
+      return t ? pad + t : '';
+    }
+    if (node.nodeType === 8) return pad + '<!--' + node.textContent + '-->';
+    if (node.nodeType !== 1) return '';
+
+    const attrs = Array.from(node.attributes)
+      .map((a) => a.name + '="' + a.value + '"')
+      .join(' ');
+    const head = pad + '<' + name + (attrs ? ' ' + attrs : '');
+    const children = Array.from(node.childNodes)
+      .map((c) => formatNode(c, depth + 1))
+      .filter(Boolean);
+    if (!children.length) return head + '/>';
+    return head + '>\n' + children.join('\n') + '\n' + pad + '</' + name + '>';
+  }
+
+  /* ==========================================================
+     优化（修复版）
+     ========================================================== */
+  els.btnOptimize.addEventListener('click', function () {
+    const text = els.code.value.trim();
+    if (!text) return showToast('请先导入 SVG', 'error');
+
+    const originalSize = new Blob([text]).size;
+    const prepared = ensureSvgNamespace(text);
+    const doc = new DOMParser().parseFromString(prepared, 'image/svg+xml');
+    if (doc.getElementsByTagName('parsererror').length > 0) {
+      return showToast('SVG 解析失败，无法优化', 'error');
+    }
+    const svg = doc.documentElement;
+    if (!svg || svg.nodeName.toLowerCase() !== 'svg') {
+      return showToast('根元素不是 SVG', 'error');
+    }
+
+    // 移除对渲染无影响的冗余属性（不碰 style / class / id）
+    ['xml:space', 'version', 'data-name'].forEach(function (a) {
+      svg.removeAttribute(a);
+    });
+
+    // 移除元数据
+    ['metadata', 'title', 'desc'].forEach(function (tag) {
+      const nodes = Array.from(svg.getElementsByTagName(tag));
+      nodes.forEach(function (n) {
+        if (n.parentNode) n.parentNode.removeChild(n);
+      });
+    });
+
+    // 移除完全空的 <g>
+    Array.from(svg.getElementsByTagName('g')).forEach(function (g) {
+      if (g.children.length === 0 &&
+          !g.textContent.trim() &&
+          g.attributes.length === 0) {
+        if (g.parentNode) g.parentNode.removeChild(g);
+      }
+    });
+
+    // 数字精度处理：只处理纯数值
+    const PURE_NUM = /^-?\d+(?:\.\d+)?(?:e[+-]?\d+)?$/i;
+    const NUMERIC_ATTRS = [
+      'x', 'y', 'width', 'height', 'cx', 'cy', 'r', 'rx', 'ry',
+      'x1', 'y1', 'x2', 'y2', 'stroke-width', 'stroke-dashoffset',
+      'stroke-miterlimit', 'opacity', 'fill-opacity', 'stroke-opacity',
+      'offset'
+    ];
+
+    Array.from(svg.querySelectorAll('*')).forEach(function (el) {
+      NUMERIC_ATTRS.forEach(function (attr) {
+        const v = el.getAttribute(attr);
+        if (!v || !PURE_NUM.test(v.trim())) return;
+        const n = parseFloat(v);
+        if (!isFinite(n)) return;
+        const rounded = Math.round(n * 1000) / 1000;
+        el.setAttribute(attr, String(rounded));
+      });
+    });
+
+    // 路径/多边形数据精度压缩
+    const PATH_NUM = /-?\d+\.\d{4,}/g;
+    Array.from(svg.querySelectorAll('path, polyline, polygon')).forEach(function (el) {
+      ['d', 'points'].forEach(function (attr) {
+        const v = el.getAttribute(attr);
+        if (!v) return;
+        const cleaned = v.replace(PATH_NUM, function (m) {
+          const n = parseFloat(m);
+          return isFinite(n) ? String(Math.round(n * 100) / 100) : m;
+        });
+        el.setAttribute(attr, cleaned);
+      });
+    });
+
+    const optimized = new XMLSerializer().serializeToString(svg);
+    const newSize = new Blob([optimized]).size;
+    const saved = Math.max(0, originalSize - newSize);
+    const pct = originalSize > 0 ? Math.round((saved / originalSize) * 100) : 0;
+
+    els.code.value = optimized;
+    syncHighlight();
+    renderSVG(optimized, state.fileName ? { fileName: state.fileName } : null);
+
+    els.optimizeResult.style.display = 'block';
+    els.optimizeResult.textContent =
+      '原始 ' + fmtBytes(originalSize) + ' → 优化后 ' + fmtBytes(newSize) +
+      '，节省 ' + pct + '%';
+
+    showToast(saved > 0 ? '已优化，节省 ' + pct + '%' : '已优化（无可压缩内容）', 'success');
+    pushHistory(optimized);
+  });
+
+  /* ==========================================================
+     导出 —— 核心修复：使用 Data URL 避免画布污染
+     ========================================================== */
+
+  /**
+   * 构建用于导出的独立 SVG 文档
+   * 处理：命名空间 → foreignObject 检测 → 尺寸注入 → CSS 变量解析
+   */
+  function buildExportSvg() {
+    const raw = els.code.value.trim();
+    if (!raw) return null;
+
+    const prepared = ensureSvgNamespace(raw);
+    const doc = new DOMParser().parseFromString(prepared, 'image/svg+xml');
+    if (doc.getElementsByTagName('parsererror').length > 0) return null;
+
+    const svg = doc.documentElement;
+    if (!svg || svg.nodeName.toLowerCase() !== 'svg') return null;
+
+    // foreignObject 会污染画布，导出前移除
+    let hadForeignObject = false;
+    const fos = Array.from(svg.getElementsByTagName('foreignObject'));
+    if (fos.length > 0) {
+      hadForeignObject = true;
+      fos.forEach(function (fo) {
+        if (fo.parentNode) fo.parentNode.removeChild(fo);
+      });
+    }
+
+    // 解析尺寸
+    const dims = readSvgDimensions(svg);
+
+    if (!svg.getAttribute('viewBox')) {
+      svg.setAttribute('viewBox', '0 0 ' + dims.w + ' ' + dims.h);
+    }
+    svg.setAttribute('width', String(dims.w));
+    svg.setAttribute('height', String(dims.h));
+
+    // 解析 CSS 变量
+    const varCache = {};
+    const walk = [svg].concat(Array.from(svg.querySelectorAll('*')));
+    walk.forEach(function (el) {
+      Array.from(el.attributes).forEach(function (attr) {
+        if (attr.value.indexOf('var(') >= 0) {
+          el.setAttribute(attr.name, resolveCssVarsInString(attr.value, varCache));
+        }
+      });
+      if (el.style && el.style.cssText && el.style.cssText.indexOf('var(') >= 0) {
+        el.style.cssText = resolveCssVarsInString(el.style.cssText, varCache);
+      }
+    });
+
+    const markup = new XMLSerializer().serializeToString(svg);
+    return { markup: markup, width: dims.w, height: dims.h, hadForeignObject: hadForeignObject };
+  }
+
+  /**
+   * 导出为图片（PNG / JPEG / WebP）
+   * 关键：使用 Data URL 而不是 Blob URL，避免画布污染
+   */
+  function exportImage(format) {
+    const info = buildExportSvg();
+    if (!info) {
+      showToast('SVG 无效，无法导出', 'error');
+      return;
+    }
+
+    if (info.hadForeignObject) {
+      showToast('已移除 foreignObject（无法导出该元素）', 'error');
+    }
+
+    const scale = clamp(state.exportScale, 1, 4);
+    const canvasW = Math.max(1, Math.round(info.width * scale));
+    const canvasH = Math.max(1, Math.round(info.height * scale));
+
+    if (canvasW > MAX_CANVAS_DIM || canvasH > MAX_CANVAS_DIM) {
+      showToast('尺寸过大（>' + MAX_CANVAS_DIM + 'px），请降低倍率', 'error');
+      return;
+    }
+
+    // 关键：Data URL 不触发 CORS，不会污染画布
+    const dataUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(info.markup);
+
+    const img = new Image();
+
+    img.onload = function () {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvasW;
+        canvas.height = canvasH;
+        const ctx = canvas.getContext('2d');
+
+        // JPEG 无透明通道，先填白底
+        if (format === 'image/jpeg') {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvasW, canvasH);
+        }
+
+        ctx.drawImage(img, 0, 0, canvasW, canvasH);
+
+        canvas.toBlob(function (outBlob) {
+          if (!outBlob) {
+            showToast('导出失败：画布生成异常', 'error');
+            return;
+          }
+          const ext = format === 'image/png' ? 'png'
+            : format === 'image/jpeg' ? 'jpg' : 'webp';
+          const baseName = (state.fileName || 'lumen').replace(/\.svg$/i, '');
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(outBlob);
+          a.download = baseName + '.' + ext;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+          showToast('已导出 ' + ext.toUpperCase() +
+            '（' + canvasW + '×' + canvasH + '）', 'success');
+        }, format, 0.92);
+
+      } catch (err) {
+        console.error('[exportImage]', err);
+        showToast('导出失败：' + (err.message || '未知错误'), 'error');
+      }
+    };
+
+    img.onerror = function () {
+      console.error('[exportImage] img.onerror');
+      showToast('SVG 加载失败，请检查是否包含外部资源', 'error');
+    };
+
+    img.src = dataUrl;
+  }
+
+  els.rangeExport.addEventListener('input', function () {
+    state.exportScale = clamp(parseInt(this.value, 10) || 2, 1, 4);
+    els.outExport.textContent = state.exportScale + 'x';
+  });
+  els.btnExportPNG.addEventListener('click', function () { exportImage('image/png'); });
+  els.btnExportJPEG.addEventListener('click', function () { exportImage('image/jpeg'); });
+  els.btnExportWebP.addEventListener('click', function () { exportImage('image/webp'); });
+
+  /* ==========================================================
+     Data URI
+     ========================================================== */
+  function toBase64(str) {
+    try {
+      // 处理 Unicode
+      const bytes = new TextEncoder().encode(str);
+      let binary = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+      }
+      return btoa(binary);
+    } catch (e) {
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+  }
+
+  els.btnDataURI64.addEventListener('click', function () {
+    const info = buildExportSvg();
+    if (!info) return showToast('SVG 无效', 'error');
+    const uri = 'data:image/svg+xml;base64,' + toBase64(info.markup);
+    copyText(uri, function () {
+      showToast('Base64 Data URI 已复制', 'success');
+    });
+  });
+
+  els.btnDataURIEnc.addEventListener('click', function () {
+    const info = buildExportSvg();
+    if (!info) return showToast('SVG 无效', 'error');
+    const uri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(info.markup);
+    copyText(uri, function () {
+      showToast('URL 编码 Data URI 已复制', 'success');
+    });
+  });
+
+  /* ==========================================================
+     复制 / 下载
+     ========================================================== */
+  function copyText(text, onDone) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(onDone).catch(function () {
+        fallbackCopy(text, onDone);
+      });
+    } else {
+      fallbackCopy(text, onDone);
+    }
+  }
+
+  function fallbackCopy(text, onDone) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.top = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); onDone(); } catch (err) {}
+    document.body.removeChild(ta);
+  }
+
+  function handleCopy() {
+    const text = els.code.value;
+    if (!text.trim()) return;
+    copyText(text, function () { showToast('源码已复制', 'success'); });
+  }
+  els.btnCopy.addEventListener('click', handleCopy);
+  els.btnCopy2.addEventListener('click', handleCopy);
+
+  function handleDownload() {
+    const info = buildExportSvg();
+    if (!info) return showToast('SVG 无效', 'error');
+    const name = state.fileName && /\.svg$/i.test(state.fileName)
+      ? state.fileName
+      : 'lumen-graphic.svg';
+    const blob = new Blob([info.markup], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    showToast('已下载', 'success');
+  }
+  els.btnDownload.addEventListener('click', handleDownload);
+
+  els.btnClearCode.addEventListener('click', function () {
+    els.code.value = '';
+    syncHighlight();
+    renderSVG('');
+    resetTransform();
+  });
+
+  /* ==========================================================
+     图层操作
+     ========================================================== */
+  els.btnIsolate.addEventListener('click', function () {
+    const idx = state.selectedIndex;
+    if (idx < 0) return;
+    const all = getAllSvgNodes();
+    const el = all[idx];
+    if (!el) return;
+
+    if (state.isolatedIndex === idx) {
+      state.isolatedIndex = -1;
+      all.forEach(function (n) { n.style.opacity = ''; });
+      showToast('已取消隔离', 'success');
+    } else {
+      state.isolatedIndex = idx;
+      all.forEach(function (n, i) {
+        if (i === 0) return;
+        n.style.opacity = '0.1';
+      });
+      el.style.opacity = '1';
+      let p = el.parentElement;
+      while (p && p.tagName.toLowerCase() !== 'svg') {
+        p.style.opacity = '1';
+        p = p.parentElement;
+      }
+      showToast('已隔离选中元素', 'success');
+    }
+    buildLayerTree();
+  });
+
+  els.btnToggleVisible.addEventListener('click', function () {
+    const idx = state.selectedIndex;
+    if (idx < 0) return;
+    const all = getAllSvgNodes();
+    const el = all[idx];
+    if (!el) return;
+
+    if (state.hiddenIndices.has(idx)) {
+      state.hiddenIndices.delete(idx);
+      el.style.display = '';
+      els.btnToggleVisible.innerHTML = '<i class="ph ph-eye-slash" aria-hidden="true"></i>隐藏';
+      showToast('元素已显示', 'success');
+    } else {
+      state.hiddenIndices.add(idx);
+      el.style.display = 'none';
+      els.btnToggleVisible.innerHTML = '<i class="ph ph-eye" aria-hidden="true"></i>显示';
+      showToast('元素已隐藏', 'success');
+    }
+    buildLayerTree();
+  });
+
+  /* ==========================================================
+     历史按钮
+     ========================================================== */
+  els.btnUndo.addEventListener('click', undo);
+  els.btnRedo.addEventListener('click', redo);
+
+  /* ==========================================================
+     标签页
+     ========================================================== */
+  document.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (t) {
+        t.setAttribute('aria-selected', 'false');
+      });
+      tab.setAttribute('aria-selected', 'true');
+      const name = tab.dataset.tab;
+      document.querySelectorAll('.panel').forEach(function (p) {
+        p.classList.toggle('is-active', p.dataset.panel === name);
+      });
+    });
+  });
+
+  /* ==========================================================
+     主题
+     ========================================================== */
+  function currentTheme() {
+    return document.documentElement.dataset.theme === 'latte' ? 'latte' : 'mocha';
+  }
+  function syncThemeUI() {
+    const theme = currentTheme();
+    const isLatte = theme === 'latte';
+    els.themeIcon.className = isLatte ? 'ph ph-sun' : 'ph ph-moon';
+    els.themeName.textContent = isLatte ? 'Latte' : 'Mocha';
+    els.statTheme.textContent = isLatte ? 'Latte' : 'Mocha';
+    els.btnTheme.setAttribute('aria-label',
+      isLatte ? '切换到 Catppuccin Mocha 主题' : '切换到 Catppuccin Latte 主题');
+  }
+  function applyTheme(next) {
+    document.documentElement.dataset.theme = next;
+    syncThemeUI();
+  }
+  els.btnTheme.addEventListener('click', function (e) {
+    const next = currentTheme() === 'mocha' ? 'latte' : 'mocha';
+    if (!document.startViewTransition || mqReduce.matches) {
+      applyTheme(next);
+      return;
+    }
+    const x = (typeof e.clientX === 'number' && e.clientX !== 0)
+      ? e.clientX : window.innerWidth / 2;
+    const y = (typeof e.clientY === 'number' && e.clientY !== 0)
+      ? e.clientY : window.innerHeight / 2;
+    const radius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+    const transition = document.startViewTransition(function () {
+      applyTheme(next);
+    });
+    transition.ready.then(function () {
+      document.documentElement.animate(
+        { clipPath: [
+            'circle(0px at ' + x + 'px ' + y + 'px)',
+            'circle(' + radius + 'px at ' + x + 'px ' + y + 'px)'
+        ] },
+        { duration: 520, easing: 'cubic-bezier(0.4, 0, 0.2, 1)',
+          pseudoElement: '::view-transition-new(root)' }
+      );
+    }).catch(function () {});
+  });
+
+  /* ==========================================================
+     快捷键
+     ========================================================== */
+  document.addEventListener('keydown', function (e) {
+    const mod = e.metaKey || e.ctrlKey;
+    if (mod && e.shiftKey && (e.key === 'L' || e.key === 'l')) {
+      e.preventDefault(); els.btnTheme.click(); return;
+    }
+    if (mod && e.shiftKey && (e.key === 'S' || e.key === 's')) {
+      e.preventDefault();
+      if (!els.btnDownload.disabled) els.btnDownload.click();
+      return;
+    }
+    if (mod && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault(); undo(); return;
+    }
+    if (mod && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+      e.preventDefault(); redo(); return;
+    }
+    if (mod && e.key === '0') {
+      e.preventDefault(); resetTransform(); return;
+    }
+    if (mod && e.key === 'o') {
+      e.preventDefault(); els.fileInput.click(); return;
+    }
+    if (e.key === 'Escape') {
+      document.body.classList.remove('is-dragging-file');
+      dragDepth = 0;
+    }
+  });
+
+  /* ==========================================================
+     初始化
+     ========================================================== */
+  function init() {
+    syncThemeUI();
+    syncControls();
+    syncHighlight();
+    renderSVG('');
+    showState('empty', '还没有图形',
+      '从左侧拖入 SVG 文件，或直接粘贴源码到画布上。');
+    updateHistoryButtons();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
