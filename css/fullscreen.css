@@ -1,0 +1,199 @@
+/* ============================================================
+   Lumen Player — 全屏可视化
+   ------------------------------------------------------------
+   从 music.html 拆分而来，保持原有选择器与行为不变。
+
+   ⚠ 修复记录：退出按钮此前「看得见却点不动」。
+   原因是 .fs-content 是覆盖整个视口的定位元素，且在 DOM 中
+   排在 .fs-close 之后，因此绘制层级压在最上面，把点击事件
+   全部吃掉了。现在显式建立层级：
+     .fs-backdrop = 0   .fs-content = 1   .fs-back/.fs-close = 3
+   并让内容层 pointer-events:none，双保险。
+   ============================================================ */
+
+.fullscreen-viz {
+  position: fixed; inset: 0;
+  z-index: 300;
+  display: none;
+  background: var(--ctp-crust);
+  overflow: hidden;
+}
+.fullscreen-viz.is-active {
+  display: block;
+  animation: fs-in var(--dur-3) var(--ease-out);
+}
+@keyframes fs-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ---- 层级 0：模糊背景 ---- */
+.fs-backdrop {
+  position: absolute; inset: -8%;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(80px) saturate(1.5) brightness(.55);
+  opacity: .72;
+  transition: background-image 1s ease;
+  pointer-events: none;
+}
+.fs-backdrop::after {
+  content: "";
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center,
+    transparent 18%,
+    color-mix(in oklab, var(--ctp-crust) 84%, transparent) 100%);
+}
+
+/* ---- 层级 1：内容 ---- */
+.fs-content {
+  position: relative;
+  z-index: 1;
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 30px; padding: 40px;
+  pointer-events: none; /* 内容不参与命中测试，退出按钮永远可点 */
+  animation: fs-content-in var(--dur-3) var(--ease-out);
+}
+@keyframes fs-content-in {
+  from { opacity: 0; transform: translateY(14px) scale(.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+.fs-canvas-wrap {
+  position: relative;
+  width: min(56vh, 500px);
+  height: min(56vh, 500px);
+}
+.fs-canvas {
+  width: 100%; height: 100%;
+  display: block;
+}
+.fs-cover {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 32%; height: 32%;
+  transform: translate(-50%, -50%);
+  border-radius: var(--r-full);
+  object-fit: cover;
+  box-shadow:
+    0 0 0 4px color-mix(in oklab, var(--ctp-crust) 75%, transparent),
+    0 10px 44px rgb(0 0 0 / .55),
+    0 0 60px -8px color-mix(in oklab, var(--cover-color) 60%, transparent);
+  display: none;
+}
+.fs-cover.is-visible { display: block; }
+.fs-cover-placeholder {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 32%; height: 32%;
+  transform: translate(-50%, -50%);
+  border-radius: var(--r-full);
+  background:
+    radial-gradient(circle at 34% 24%,
+      color-mix(in oklab, var(--cover-color) 62%, transparent), transparent 66%),
+    linear-gradient(140deg,
+      color-mix(in oklab, var(--cover-color) 55%, var(--ctp-surface0)),
+      color-mix(in oklab, var(--accent) 35%, var(--ctp-surface0)));
+  display: grid; place-items: center;
+  font-size: 42px;
+  color: color-mix(in oklab, var(--ctp-crust) 60%, transparent);
+  box-shadow:
+    0 0 0 4px color-mix(in oklab, var(--ctp-crust) 75%, transparent),
+    0 10px 44px rgb(0 0 0 / .55);
+}
+
+.fs-info {
+  text-align: center;
+  color: var(--ctp-text);
+  max-width: 70vw;
+}
+.fs-title {
+  margin: 0;
+  font-size: clamp(21px, 3vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-wrap: balance;
+}
+.fs-artist {
+  margin: 9px 0 0;
+  font-size: clamp(12px, 1.4vw, 15px);
+  color: color-mix(in oklab, var(--ctp-text) 72%, transparent);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fs-lyric {
+  margin: 20px auto 0;
+  max-width: 620px;
+  min-height: 28px;
+  font-size: clamp(14px, 1.6vw, 18px);
+  font-weight: 560;
+  line-height: 1.6;
+  color: var(--accent);
+  text-align: center;
+  text-shadow: 0 0 32px color-mix(in oklab, var(--accent) 55%, transparent);
+  transition: opacity var(--dur-2) ease;
+  text-wrap: pretty;
+}
+
+/* ---- 层级 3：退出控件（永远在最上层且可点击）---- */
+.fs-back,
+.fs-close {
+  position: absolute;
+  z-index: 3;
+  border: 1px solid color-mix(in oklab, var(--ctp-text) 20%, transparent);
+  background: color-mix(in oklab, var(--ctp-crust) 58%, transparent);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  color: var(--ctp-text);
+  cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: background-color var(--dur-1) ease, border-color var(--dur-1) ease,
+              color var(--dur-1) ease, transform var(--dur-1) var(--ease-out);
+}
+
+/* 左上角「返回」：全屏里明确的退出口 */
+.fs-back {
+  top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
+  left: max(20px, calc(env(safe-area-inset-left, 0px) + 12px));
+  gap: 6px;
+  height: 42px; padding: 0 17px 0 13px;
+  border-radius: var(--r-full);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 620;
+  letter-spacing: .01em;
+}
+.fs-back i { font-size: 16px; }
+.fs-back:hover {
+  background: color-mix(in oklab, var(--accent) 30%, var(--ctp-crust));
+  border-color: var(--accent);
+  color: var(--ctp-text);
+  transform: translateX(-2px);
+}
+.fs-back:active { transform: translateX(-2px) scale(0.97); }
+
+/* 右上角「关闭」*/
+.fs-close {
+  top: max(20px, calc(env(safe-area-inset-top, 0px) + 12px));
+  right: max(20px, calc(env(safe-area-inset-right, 0px) + 12px));
+  width: 42px; height: 42px;
+  border-radius: var(--r-full);
+  font-size: 19px;
+}
+.fs-close:hover {
+  background: color-mix(in oklab, var(--ctp-red) 32%, var(--ctp-crust));
+  border-color: var(--ctp-red);
+  color: var(--ctp-text);
+  transform: scale(1.06) rotate(90deg);
+}
+.fs-close:active { transform: scale(0.96) rotate(90deg); }
+
+.fs-back:focus-visible,
+.fs-close:focus-visible {
+  outline: 2px solid var(--ctp-text);
+  outline-offset: 3px;
+}

@@ -1,0 +1,233 @@
+/* ============================================================
+   Lumen Player — 播放列表面板
+   ------------------------------------------------------------
+   从 music.html 拆分而来，保持原有选择器与行为不变。
+   圆角规则：独立按钮 / 下拉 = --r-full；分段网格选项与
+   多行输入 = --r-sm；列表与面板容器 = --r-md；列表行 = --r-sm。
+   ============================================================ */
+/* ============================================================
+   工具行
+   ============================================================ */
+.list-toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.toolbar-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 8px 12px;
+  border: 1px solid var(--border); border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--ctp-surface0) 22%, transparent);
+  color: var(--fg-muted);
+  font: inherit; font-size: 11px; font-weight: 580;
+  line-height: 1; white-space: nowrap; cursor: pointer;
+  min-height: 34px;
+  transition: background-color var(--dur-1) ease, border-color var(--dur-1) ease,
+              color var(--dur-1) ease, transform var(--dur-1) ease;
+}
+.toolbar-btn i { font-size: 14px; }
+.toolbar-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+.toolbar-btn:active { transform: scale(0.96); }
+.toolbar-btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 62%, transparent);
+  outline-offset: 1px;
+}
+.toolbar-btn[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+
+/* 破坏性操作：唯一允许出现红色的地方之一 */
+.toolbar-btn.is-danger:hover {
+  background: color-mix(in oklab, var(--ctp-red) 14%, transparent);
+  border-color: color-mix(in oklab, var(--ctp-red) 40%, transparent);
+  color: var(--ctp-red);
+}
+.toolbar-btn.is-danger:focus-visible {
+  outline-color: color-mix(in oklab, var(--ctp-red) 62%, transparent);
+}
+
+/* —— 排序下拉 —— */
+.sort-select {
+  padding: 8px 12px; min-height: 34px;
+  border: 1px solid var(--border); border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--ctp-surface0) 22%, transparent);
+  color: var(--fg-muted);
+  font: inherit; font-size: 11px; font-weight: 560;
+  cursor: pointer; outline: none;
+  transition: border-color var(--dur-1) ease, background-color var(--dur-1) ease,
+              color var(--dur-1) ease;
+}
+.sort-select:hover {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--fg);
+}
+.sort-select:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 62%, transparent);
+  outline-offset: 1px;
+}
+.sort-select option { background: var(--ctp-mantle); color: var(--fg); }
+
+/* ============================================================
+   列表容器
+   ============================================================ */
+.playlist-body {
+  max-height: calc(100vh - 400px);
+  min-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 5px;
+  background: color-mix(in oklab, var(--ctp-surface0) 18%, transparent);
+}
+.playlist-body:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* —— 空状态：像个「投放口」，而不是一块空白 —— */
+.playlist-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; padding: 40px 22px; text-align: center; color: var(--fg-dim);
+  border: 1px dashed var(--accent-line);
+  border-radius: var(--r-md);
+  background:
+    radial-gradient(ellipse 70% 60% at 50% 0%,
+      color-mix(in oklab, var(--accent) 9%, transparent), transparent 70%);
+}
+.playlist-empty i {
+  display: grid; place-items: center;
+  width: 46px; height: 46px;
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-line);
+  color: var(--accent);
+  font-size: 22px;
+}
+.playlist-empty p {
+  margin: 0; font-size: 11.5px; line-height: 1.6; max-width: 26ch;
+  color: var(--fg-muted);
+}
+
+/* ============================================================
+   列表行
+   ============================================================ */
+.track-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background-color var(--dur-1) ease, border-color var(--dur-1) ease,
+              transform var(--dur-1) ease;
+  position: relative;
+}
+.track-item:hover {
+  background: var(--surface-hover);
+}
+.track-item:active { transform: scale(0.995); }
+.track-item.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+}
+.track-item.is-active::before {
+  content: "";
+  position: absolute; left: 3px; top: 50%;
+  width: 2px; height: 18px; border-radius: var(--r-full);
+  background: var(--accent);
+  transform: translateY(-50%);
+}
+.track-item.is-active .ti-title { color: var(--accent); font-weight: 600; }
+.track-item[draggable="true"] { cursor: grab; }
+.track-item.is-dragging { opacity: .4; }
+.track-item.is-drag-over { border-top: 2px solid var(--accent); }
+
+.ti-index {
+  width: 22px; flex: none;
+  font-family: var(--font-mono); font-size: 10.5px;
+  color: var(--fg-dim); text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.track-item.is-active .ti-index { color: var(--accent); }
+.ti-index i { font-size: 13px; }
+
+.ti-meta { flex: 1; min-width: 0; }
+.ti-title {
+  margin: 0; font-size: 12.5px; font-weight: 570; color: var(--fg);
+  letter-spacing: -0.008em;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ti-sub {
+  margin: 3px 0 0; font-family: var(--font-mono);
+  font-size: 9.5px; color: var(--fg-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.ti-duration {
+  flex: none; font-family: var(--font-mono); font-size: 10px;
+  color: var(--fg-dim); font-variant-numeric: tabular-nums;
+}
+
+.ti-btn {
+  flex: none;
+  display: grid; place-items: center;
+  width: 24px; height: 24px;
+  border: 0; border-radius: var(--r-xs);
+  background: transparent; color: var(--fg-dim);
+  font-size: 13px; cursor: pointer;
+  opacity: 0;
+  transition: opacity var(--dur-1) ease, background-color var(--dur-1) ease,
+              color var(--dur-1) ease, transform var(--dur-1) ease;
+}
+.track-item:hover .ti-btn,
+.track-item:focus-within .ti-btn { opacity: .8; }
+.ti-btn:hover {
+  background: color-mix(in oklab, var(--ctp-surface1) 55%, transparent);
+  color: var(--fg);
+  opacity: 1;
+}
+.ti-btn:active { transform: scale(0.9); }
+.ti-btn:focus-visible {
+  opacity: 1;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.ti-btn.is-active { opacity: 1; color: var(--accent); }
+.ti-btn.ti-lyric.has-lyric { color: var(--accent); opacity: .85; }
+.ti-btn.ti-remove:hover {
+  background: color-mix(in oklab, var(--ctp-red) 18%, transparent);
+  color: var(--ctp-red);
+}
+
+/* 触屏没有 hover，操作按钮需要常驻 */
+@media (hover: none) {
+  .ti-btn { opacity: .7; }
+}
+
+/* ============================================================
+   播放中的跳动指示
+   ============================================================ */
+.ti-playing {
+  display: flex; align-items: flex-end;
+  gap: 1.5px; height: 12px; width: 22px;
+  justify-content: center;
+}
+.ti-playing span {
+  width: 2.5px; border-radius: var(--r-full);
+  background: var(--accent);
+  animation: eq-bounce 0.9s ease-in-out infinite;
+}
+.ti-playing span:nth-child(1) { animation-delay: 0s;    height: 40%; }
+.ti-playing span:nth-child(2) { animation-delay: .18s;  height: 80%; }
+.ti-playing span:nth-child(3) { animation-delay: .36s;  height: 55%; }
+@keyframes eq-bounce {
+  0%, 100% { transform: scaleY(0.35); }
+  50%      { transform: scaleY(1); }
+}

@@ -1,0 +1,218 @@
+/* ============================================================
+   Lumen Player — 设计 token / 基础重置
+   ------------------------------------------------------------
+   设计基调：本地优先的长时间聆听工作台。
+   · 一个强调色（Catppuccin mauve），其余颜色只做语义用途
+     （红 = 破坏性操作 / 错误，绿 = 成功）。
+   · 专辑封面提取出的 --cover-color 只作为「环境染色」，
+     不参与 UI 强调色，避免页面出现第二个抢眼的色相。
+   · 圆角三档：控件 --r-sm / 容器 --r-md~--r-lg / 药丸 --r-full。
+   · 阴影统一向背景色相（crust）偏移，不使用纯黑投影。
+   ============================================================ */
+
+/* ============================================================
+   Catppuccin Latte / Mocha
+   ============================================================ */
+:root, [data-theme="latte"] {
+  --ctp-rosewater:#dc8a78; --ctp-flamingo:#dd7878; --ctp-pink:#ea76cb;
+  --ctp-mauve:#8839ef;     --ctp-red:#d20f39;      --ctp-maroon:#e64553;
+  --ctp-peach:#fe640b;     --ctp-yellow:#df8e1d;   --ctp-green:#40a02b;
+  --ctp-teal:#179299;      --ctp-sky:#04a5e5;      --ctp-sapphire:#209fb5;
+  --ctp-blue:#1e66f5;      --ctp-lavender:#7287fd;
+  --ctp-text:#4c4f69;      --ctp-subtext1:#5c5f77; --ctp-subtext0:#6c6f85;
+  --ctp-overlay2:#7c7f93;  --ctp-overlay1:#8c8fa1; --ctp-overlay0:#9ca0b0;
+  --ctp-surface2:#acb0be;  --ctp-surface1:#bcc0cc; --ctp-surface0:#ccd0da;
+  --ctp-base:#eff1f5;      --ctp-mantle:#e6e9ef;   --ctp-crust:#dce0e8;
+  color-scheme: light;
+
+  --accent-ink: #ffffff;
+  --shadow-rgb: 76 79 105;
+  --grain-opacity: .028;
+}
+
+[data-theme="mocha"] {
+  --ctp-rosewater:#f5e0dc; --ctp-flamingo:#f2cdcd; --ctp-pink:#f5c2e7;
+  --ctp-mauve:#cba6f7;     --ctp-red:#f38ba8;      --ctp-maroon:#eba0ac;
+  --ctp-peach:#fab387;     --ctp-yellow:#f9e2af;   --ctp-green:#a6e3a1;
+  --ctp-teal:#94e2d5;      --ctp-sky:#89dceb;      --ctp-sapphire:#74c7ec;
+  --ctp-blue:#89b4fa;      --ctp-lavender:#b4befe;
+  --ctp-text:#cdd6f4;      --ctp-subtext1:#bac2de; --ctp-subtext0:#a6adc8;
+  --ctp-overlay2:#9399b2;  --ctp-overlay1:#7f849c; --ctp-overlay0:#6c7086;
+  --ctp-surface2:#585b70;  --ctp-surface1:#45475a; --ctp-surface0:#313244;
+  --ctp-base:#1e1e2e;      --ctp-mantle:#181825;   --ctp-crust:#11111b;
+  color-scheme: dark;
+
+  --accent-ink: var(--ctp-crust);
+  --shadow-rgb: 8 8 14;
+  --grain-opacity: .034;
+}
+
+/* ============================================================
+   语义 token
+   ============================================================ */
+:root {
+  /* —— 表面 —— */
+  --bg: var(--ctp-base);
+  --panel: var(--ctp-mantle);
+  --panel-2: var(--ctp-crust);
+  --surface-hover: color-mix(in oklab, var(--ctp-surface0) 58%, transparent);
+  --border: var(--ctp-surface0);
+  --border-2: var(--ctp-surface1);
+
+  /* —— 文本 —— */
+  --fg: var(--ctp-text);
+  --fg-muted: var(--ctp-subtext0);
+  --fg-dim: var(--ctp-overlay1);
+
+  /* —— 单一强调色 —— */
+  --accent: var(--ctp-mauve);
+  --accent-soft: color-mix(in oklab, var(--accent) 16%, transparent);
+  --accent-line: color-mix(in oklab, var(--accent) 38%, transparent);
+  --accent-strong: color-mix(in oklab, var(--accent) 88%, var(--ctp-text));
+
+  /* —— 圆角（一套规则，全站一致）——
+     独立按钮 / 下拉 / 搜索框 = --r-full
+     分段网格选项、多行输入   = --r-sm
+     面板、列表、信息表       = --r-md
+     对话框                   = --r-lg
+     封面主视觉               = --r-xl                        */
+  --r-xs: 6px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-full: 999px;
+
+  /* —— 阴影（向背景色相偏移）—— */
+  --shadow-1: 0 1px 2px rgb(var(--shadow-rgb) / .18);
+  --shadow-2: 0 6px 20px -8px rgb(var(--shadow-rgb) / .45);
+  --shadow-3: 0 24px 60px -24px rgb(var(--shadow-rgb) / .6);
+
+  /* —— 动效 —— */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-soft: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-1: .14s;
+  --dur-2: .24s;
+  --dur-3: .42s;
+
+  /* —— 布局度量 —— */
+  --spectrum-h: 4px;
+  --topbar-h: 58px;
+  --playbar-h: 92px;
+  --sidebar-w: 324px;
+
+  /* —— 字体 ——
+     Outfit / JetBrains Mono 均只含拉丁字形，中文自动回落到
+     系统无衬线（PingFang SC / 微软雅黑），得到「拉丁有性格、
+     中文干净」的混排效果。 */
+  --font-sans: "Outfit Variable", ui-sans-serif, system-ui, -apple-system,
+               "Segoe UI", "PingFang SC", "Hiragino Sans GB",
+               "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono",
+               "Cascadia Code", Menlo, Consolas, monospace;
+
+  /* —— 内容派生色（仅用于环境染色与画布）—— */
+  --cover-color: var(--ctp-mauve);
+
+  /* —— 噪点纹理，抵消纯平色的「数码感」—— */
+  --grain: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='160'%20height='160'%3E%3Cfilter%20id='n'%3E%3CfeTurbulence%20type='fractalNoise'%20baseFrequency='0.9'%20numOctaves='3'%20stitchTiles='stitch'/%3E%3C/filter%3E%3Crect%20width='160'%20height='160'%20filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ============================================================
+   基础重置
+   ============================================================ */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  background: var(--bg);
+  color: var(--fg);
+  display: grid;
+  grid-template-rows: var(--spectrum-h) var(--topbar-h) minmax(0, 1fr) var(--playbar-h);
+  height: 100dvh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 环境光：单一色相场，随封面缓慢换色 */
+body::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background:
+    radial-gradient(ellipse 58% 44% at 8% -10%,
+      color-mix(in oklab, var(--cover-color) 24%, transparent),
+      transparent 62%),
+    radial-gradient(ellipse 48% 38% at 94% 106%,
+      color-mix(in oklab, var(--accent) 13%, transparent),
+      transparent 64%),
+    radial-gradient(ellipse 70% 55% at 50% 44%,
+      color-mix(in oklab, var(--cover-color) 5%, transparent),
+      transparent 72%);
+  transition: background var(--dur-3) ease;
+}
+
+/* 胶片噪点：极低透明度，打散纯色平面 */
+body::after {
+  content: "";
+  position: fixed; inset: 0; z-index: 9999;
+  pointer-events: none;
+  background-image: var(--grain);
+  background-size: 160px 160px;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: overlay;
+}
+
+::selection { background: color-mix(in oklab, var(--accent) 34%, transparent); }
+
+/* 统一滚动条 */
+* { scrollbar-width: thin; scrollbar-color: var(--ctp-surface1) transparent; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--ctp-surface0);
+  border: 2px solid transparent;
+  border-radius: var(--r-full);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ctp-surface1);
+  background-clip: content-box;
+}
+
+/* 键盘焦点基线（组件可覆盖为更贴合的形状） */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* 跳到主内容的链接，仅键盘可达 */
+.skip-link {
+  position: fixed;
+  top: 10px; left: 10px;
+  z-index: 10000;
+  padding: 9px 14px;
+  border-radius: var(--r-sm);
+  background: var(--panel-2);
+  border: 1px solid var(--accent-line);
+  color: var(--fg);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transform: translateY(-160%);
+  transition: transform var(--dur-2) var(--ease-out);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  body::after { display: none; }
+}

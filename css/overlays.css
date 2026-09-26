@@ -1,0 +1,82 @@
+/* ============================================================
+   Lumen Player — 拖放遮罩 + Toast
+   ------------------------------------------------------------
+   从 music.html 拆分而来，保持原有选择器与行为不变。
+   ============================================================ */
+
+/* ============================================================
+   拖放遮罩
+   ============================================================ */
+.drop-overlay {
+  position: fixed; inset: 0; z-index: 250;
+  display: grid; place-items: center;
+  background: color-mix(in oklab, var(--ctp-crust) 80%, transparent);
+  backdrop-filter: blur(16px) saturate(130%);
+  -webkit-backdrop-filter: blur(16px) saturate(130%);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--dur-2) ease;
+}
+body.is-dragging-file .drop-overlay { opacity: 1; }
+
+.drop-inner {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 18px; padding: 58px 76px;
+  border: 2px dashed var(--accent-line);
+  border-radius: var(--r-xl);
+  background: color-mix(in oklab, var(--ctp-base) 55%, transparent);
+  box-shadow: var(--shadow-3);
+  transform: scale(0.94);
+  transition: transform var(--dur-3) var(--ease-out);
+}
+body.is-dragging-file .drop-inner { transform: scale(1); }
+.drop-inner i {
+  font-size: 48px;
+  color: var(--accent);
+  filter: drop-shadow(0 6px 28px color-mix(in oklab, var(--accent) 50%, transparent));
+  animation: drop-bounce 1.8s ease-in-out infinite;
+}
+@keyframes drop-bounce {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-9px); }
+}
+.drop-inner p {
+  margin: 0; font-size: 17px; font-weight: 690;
+  letter-spacing: -0.02em;
+  color: var(--fg);
+}
+.drop-inner span {
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: .06em;
+  color: var(--fg-dim);
+}
+
+/* ============================================================
+   Toast
+   ============================================================ */
+.toast {
+  position: fixed;
+  bottom: calc(var(--playbar-h) + 18px); left: 50%;
+  transform: translateX(-50%) translateY(16px) scale(.97);
+  z-index: 400;
+  padding: 11px 18px;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--panel) 92%, transparent);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  font-size: 12.5px; font-weight: 570;
+  color: var(--fg);
+  box-shadow: var(--shadow-3);
+  opacity: 0; pointer-events: none;
+  transition: opacity var(--dur-2) ease, transform var(--dur-2) var(--ease-out);
+  display: flex; align-items: center; gap: 9px;
+  max-width: min(80vw, 460px);
+}
+.toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0) scale(1);
+}
+.toast i { font-size: 16px; flex: none; color: var(--accent); }
+.toast.is-success i { color: var(--ctp-green); }
+.toast.is-error i { color: var(--ctp-red); }
+.toast.is-error { border-color: color-mix(in oklab, var(--ctp-red) 45%, transparent); }

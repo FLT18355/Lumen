@@ -1,0 +1,8 @@
+.omp/skills/
+bug/
+dist/
+node_modules/
+.astro/
+.cache/
+.agents/
+.pi/

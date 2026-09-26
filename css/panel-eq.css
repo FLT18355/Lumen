@@ -1,0 +1,177 @@
+/* ============================================================
+   Lumen Player — EQ 面板 + 播放速度
+   ------------------------------------------------------------
+   从 music.html 拆分而来，保持原有选择器与行为不变。
+   配色：全部使用单一强调色，不再按控件分配彩虹色。
+   ============================================================ */
+
+/* ============================================================
+   均衡器开关
+   ============================================================ */
+.eq-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 10px 0;
+}
+.eq-toggle-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 570; color: var(--fg-muted);
+}
+.eq-toggle-label i { font-size: 15px; color: var(--accent); }
+
+.switch {
+  position: relative; width: 40px; height: 23px;
+  flex: none; border: 0; border-radius: var(--r-full);
+  background: var(--ctp-surface0); cursor: pointer; padding: 0;
+  transition: background-color var(--dur-2) var(--ease-soft);
+}
+.switch::after {
+  content: ""; position: absolute;
+  top: 3px; left: 3px; width: 17px; height: 17px;
+  border-radius: var(--r-full); background: var(--ctp-overlay0);
+  transition: transform var(--dur-2) var(--ease-out),
+              background-color var(--dur-2) var(--ease-soft);
+}
+.switch[aria-checked="true"] {
+  background: color-mix(in oklab, var(--accent) 42%, transparent);
+}
+.switch[aria-checked="true"]::after {
+  transform: translateX(17px);
+  background: var(--accent);
+  box-shadow: 0 1px 8px color-mix(in oklab, var(--accent) 60%, transparent);
+}
+.switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ============================================================
+   推子
+   ============================================================ */
+.eq-sliders {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  padding: 13px 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: color-mix(in oklab, var(--ctp-surface0) 18%, transparent);
+  transition: opacity var(--dur-2) ease, filter var(--dur-2) ease;
+}
+.eq-sliders[data-disabled="true"] { opacity: .38; pointer-events: none; filter: grayscale(.5); }
+
+.eq-col {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 7px;
+}
+.eq-val {
+  font-family: var(--font-mono);
+  font-size: 9.5px; font-weight: 620;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  min-height: 13px;
+}
+.eq-slider-wrap {
+  width: 24px; height: 110px;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.eq-slider {
+  position: absolute;
+  width: 110px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px; border-radius: var(--r-full);
+  background: var(--ctp-surface0);
+  outline: none; cursor: pointer;
+  transform: rotate(-90deg);
+}
+.eq-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: var(--r-full);
+  background: var(--accent);
+  border: 2px solid var(--panel);
+  box-shadow: 0 0 0 1px var(--accent-line);
+  transition: transform var(--dur-1) var(--ease-out);
+}
+.eq-slider::-webkit-slider-thumb:hover { transform: scale(1.25); }
+.eq-slider::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: var(--r-full);
+  background: var(--accent);
+  border: 2px solid var(--panel);
+  box-shadow: 0 0 0 1px var(--accent-line);
+}
+.eq-slider:focus-visible {
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 45%, transparent);
+}
+
+.eq-freq {
+  font-family: var(--font-mono);
+  font-size: 9px; color: var(--fg-dim);
+  letter-spacing: -0.02em;
+}
+
+/* ============================================================
+   预设 / 速度：分段网格按钮
+   ============================================================ */
+.preset-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+}
+.preset-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 9px 6px;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--ctp-surface0) 16%, transparent);
+  color: var(--fg-muted);
+  font: inherit; font-size: 11px; font-weight: 570;
+  line-height: 1; white-space: nowrap; cursor: pointer;
+  transition: background-color var(--dur-1) ease, border-color var(--dur-1) ease,
+              color var(--dur-1) ease, transform var(--dur-1) ease;
+}
+.preset-btn i { font-size: 13px; }
+.preset-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+.preset-btn:active { transform: scale(0.96); }
+.preset-btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 60%, transparent);
+  outline-offset: 1px;
+}
+.preset-btn[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+  font-weight: 620;
+}
+
+.speed-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+.speed-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 9px 4px;
+  border: 1px solid var(--border); border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--ctp-surface0) 16%, transparent);
+  color: var(--fg-muted);
+  font-family: var(--font-mono);
+  font-size: 11.5px; font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--dur-1) ease, border-color var(--dur-1) ease,
+              color var(--dur-1) ease, transform var(--dur-1) ease;
+}
+.speed-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+.speed-btn:active { transform: scale(0.96); }
+.speed-btn:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 60%, transparent);
+  outline-offset: 1px;
+}
+.speed-btn[aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}

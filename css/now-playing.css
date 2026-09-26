@@ -1,0 +1,240 @@
+/* ============================================================
+   Lumen Player — 右侧主区：正在播放
+   ------------------------------------------------------------
+   从 music.html 拆分而来，保持原有选择器与行为不变。
+   这一块是全站的主视觉：封面居中（媒体播放器的合理惯例），
+   四周用环境光与一层极淡的聚光打破「纯居中」的呆板。
+   ============================================================ */
+
+.now-playing {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 22px; padding: 28px 34px;
+  min-height: 0; overflow: hidden;
+  position: relative;
+}
+
+/* 聚光：跟随封面染色，制造纵深 */
+.now-playing::before {
+  content: "";
+  position: absolute;
+  top: 44%; left: 50%;
+  width: min(76vh, 720px); height: min(76vh, 720px);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  background: radial-gradient(circle at center,
+    color-mix(in oklab, var(--cover-color) 16%, transparent) 0%,
+    color-mix(in oklab, var(--cover-color) 6%, transparent) 38%,
+    transparent 68%);
+  filter: blur(6px);
+  transition: background var(--dur-3) ease;
+}
+
+/* ============================================================
+   封面
+   ============================================================ */
+.cover-wrap {
+  position: relative;
+  width: min(258px, 32vh);
+  height: min(258px, 32vh);
+  flex: none;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  background: var(--ctp-surface0);
+  cursor: pointer;
+  box-shadow:
+    0 6px 26px -10px rgb(var(--shadow-rgb) / .55),
+    0 26px 70px -22px rgb(var(--shadow-rgb) / .7),
+    0 0 0 1px color-mix(in oklab, var(--cover-color) 24%, transparent);
+  transition: box-shadow var(--dur-3) ease,
+              transform var(--dur-2) var(--ease-out);
+}
+/* 内边缘高光，让封面像一块实体材质而非贴图 */
+.cover-wrap::after {
+  content: "";
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .09);
+}
+.cover-wrap:hover { transform: translateY(-3px) scale(1.012); }
+.cover-wrap:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.cover-art {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+.cover-placeholder {
+  width: 100%; height: 100%;
+  display: grid; place-items: center;
+  background:
+    radial-gradient(circle at 30% 22%,
+      color-mix(in oklab, var(--cover-color) 34%, var(--ctp-surface0)),
+      transparent 62%),
+    linear-gradient(150deg,
+      color-mix(in oklab, var(--accent) 22%, var(--ctp-surface0)),
+      color-mix(in oklab, var(--ctp-surface1) 40%, var(--ctp-surface0)));
+  color: var(--ctp-overlay1);
+  font-size: 54px;
+}
+
+/* 播放中：轻微呼吸 + 强调色外发光 */
+body.is-playing .cover-wrap {
+  animation: cover-breathe 5s ease-in-out infinite;
+  box-shadow:
+    0 6px 26px -10px rgb(var(--shadow-rgb) / .55),
+    0 26px 70px -22px rgb(var(--shadow-rgb) / .7),
+    0 0 0 1px color-mix(in oklab, var(--cover-color) 42%, transparent),
+    0 0 70px -14px color-mix(in oklab, var(--cover-color) 55%, transparent);
+}
+@keyframes cover-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.014); }
+}
+body.is-playing .cover-wrap:hover { animation: none; transform: translateY(-3px) scale(1.026); }
+
+/* ============================================================
+   曲目信息
+   ============================================================ */
+.track-info {
+  text-align: center; max-width: 100%; min-width: 0;
+  position: relative;
+}
+.track-title {
+  margin: 0;
+  font-size: clamp(20px, 1.9vw, 27px);
+  font-weight: 680;
+  letter-spacing: -0.028em;
+  line-height: 1.18;
+  color: var(--fg);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  text-wrap: balance;
+}
+.track-artist {
+  margin: 6px 0 0; font-size: 12.5px; font-weight: 500;
+  letter-spacing: .01em;
+  color: var(--fg-muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.track-format {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 9px; padding: 3px 10px;
+  border: 1px solid var(--border); border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--ctp-surface0) 26%, transparent);
+  font-family: var(--font-mono);
+  font-size: 9.5px; font-weight: 620;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ctp-overlay0);
+}
+
+/* ============================================================
+   可视化
+   ============================================================ */
+.viz-wrap {
+  width: 100%; max-width: 500px;
+  height: 100px; flex: none;
+  position: relative;
+}
+.viz-canvas {
+  width: 100%; height: 100%;
+  display: block;
+}
+.viz-mode-switch {
+  position: absolute;
+  right: 0; top: -8px;
+  display: flex; gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--panel) 78%, transparent);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  box-shadow: var(--shadow-1);
+}
+.viz-mode-btn {
+  width: 27px; height: 27px;
+  border: 0; border-radius: var(--r-full);
+  background: transparent; color: var(--fg-dim);
+  font-size: 13px; cursor: pointer;
+  display: grid; place-items: center;
+  transition: background-color var(--dur-1) ease, color var(--dur-1) ease,
+              transform var(--dur-1) ease;
+}
+.viz-mode-btn:hover { background: var(--accent-soft); color: var(--accent); }
+.viz-mode-btn:active { transform: scale(0.9); }
+.viz-mode-btn[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.viz-mode-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ============================================================
+   歌词覆盖视图
+   ============================================================ */
+.view-toggle {
+  display: flex; gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-full);
+  background: color-mix(in oklab, var(--panel) 78%, transparent);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+}
+.view-toggle-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 13px;
+  border: 0; border-radius: var(--r-full);
+  background: transparent; color: var(--fg-dim);
+  font: inherit; font-size: 11.5px; font-weight: 570;
+  cursor: pointer;
+  transition: background-color var(--dur-1) ease, color var(--dur-1) ease;
+}
+.view-toggle-btn i { font-size: 14px; }
+.view-toggle-btn:hover { color: var(--fg); }
+.view-toggle-btn[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.view-toggle-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.lyric-view {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  padding: 18px 26px;
+  background: color-mix(in oklab, var(--panel) 66%, transparent);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  z-index: 5;
+  animation: panel-in var(--dur-2) var(--ease-out);
+}
+.lyric-view.is-active { display: flex; }
+
+.lyric-view-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px; flex: none;
+}
+.lyric-view-title {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12.5px; font-weight: 620;
+  color: var(--fg);
+  min-width: 0;
+}
+.lyric-view-title i { font-size: 15px; color: var(--accent); flex: none; }
+.lyric-view-title span {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.lyric-view .lyric-container {
+  flex: 1; min-height: 0;
+  height: auto;
+  border: 0;
+  background: transparent;
+  padding: 40% 0;
+}
+.lyric-view .lyric-line { font-size: 15px; }
+.lyric-view .lyric-line.is-active { font-size: 18px; }

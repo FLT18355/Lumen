@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="mocha">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e1e2e">
+<meta name="description" content="Lumen Player，本地优先的网页音乐播放器：播放列表、LRC 歌词、均衡器、可视化与全屏模式。">
+<meta name="color-scheme" content="dark light">
+<title>Lumen Player · 音乐播放器</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Ccircle%20cx='16'%20cy='16'%20r='14'%20fill='%2311111b'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='7.5'%20fill='none'%20stroke='%23cba6f7'%20stroke-width='2'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='2.6'%20fill='%23cba6f7'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/outfit/index.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/jetbrains-mono/index.css">
+<link rel="stylesheet" href="css/tokens.css">
+<link rel="stylesheet" href="css/topbar.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/panel-list.css">
+<link rel="stylesheet" href="css/panel-lyric.css">
+<link rel="stylesheet" href="css/panel-eq.css">
+<link rel="stylesheet" href="css/panel-info-tools.css">
+<link rel="stylesheet" href="css/now-playing.css">
+<link rel="stylesheet" href="css/playbar.css">
+<link rel="stylesheet" href="css/fullscreen.css">
+<link rel="stylesheet" href="css/overlays.css">
+<link rel="stylesheet" href="css/responsive.css">
+<script>
+  // 主题初始化 —— 必须阻塞执行，避免首帧闪白（与 SVG 查看器一致）
+  document.documentElement.dataset.theme = (function () {
+    try {
+      var saved = localStorage.getItem('lumen-player-theme');
+      if (saved === 'latte' || saved === 'mocha') return saved;
+    } catch (e) {}
+    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'latte' : 'mocha';
+  })();
+</script>
+</head>
+<body>
+
+<a class="skip-link" href="#playlistBody">跳到播放列表</a>
+
+<!-- 光谱条 -->
+<div class="spectrum" id="spectrum" aria-hidden="true"></div>
+
+<!-- 顶栏 -->
+<header class="topbar">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="bm-g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%"   style="stop-color: var(--ctp-mauve)"/>
+          <stop offset="52%"  style="stop-color: var(--ctp-blue)"/>
+          <stop offset="100%" style="stop-color: var(--ctp-teal)"/>
+        </linearGradient>
+      </defs>
+      <circle cx="16" cy="16" r="12" stroke="url(#bm-g)" stroke-width="2"/>
+      <circle cx="16" cy="16" r="4" fill="url(#bm-g)"/>
+      <path d="M16 4 L16 11" stroke="url(#bm-g)" stroke-width="2" stroke-linecap="round"/>
+      <path d="M16 21 L16 28" stroke="url(#bm-g)" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <div>
+      <h1 class="brand-name">Lumen Player</h1>
+      <p class="brand-sub">MUSIC STUDIO</p>
+    </div>
+  </div>
+
+  <div class="actions">
+    <div class="search-box">
+      <input type="search" id="searchInput" placeholder="搜索曲目…" aria-label="搜索曲目">
+      <i class="ph ph-magnifying-glass" aria-hidden="true"></i>
+    </div>
+
+    <button class="btn btn-primary" type="button" id="btnAdd">
+      <i class="ph ph-plus" aria-hidden="true"></i>
+      <span class="btn-label">添加音乐</span>
+    </button>
+
+    <button class="theme-toggle" type="button" id="btnTheme" aria-label="切换主题">
+      <i class="ph ph-moon" id="themeIcon" aria-hidden="true"></i>
+      <span class="theme-name" id="themeName">Mocha</span>
+    </button>
+  </div>
+</header>
+
+<!-- 主区 -->
+<main>
+  <!-- 左侧：控制面板 -->
+  <aside class="sidebar">
+    <nav class="tabs" role="tablist" aria-label="控制面板">
+      <button class="tab" role="tab" data-tab="list"
+              aria-selected="true">
+        <i class="ph ph-queue" aria-hidden="true"></i>
+        <span>列表</span>
+      </button>
+      <button class="tab" role="tab" data-tab="lyric"
+              aria-selected="false">
+        <i class="ph ph-text-align-center" aria-hidden="true"></i>
+        <span>歌词</span>
+      </button>
+      <button class="tab" role="tab" data-tab="eq"
+              aria-selected="false">
+        <i class="ph ph-equalizer" aria-hidden="true"></i>
+        <span>音效</span>
+      </button>
+      <button class="tab" role="tab" data-tab="info"
+              aria-selected="false">
+        <i class="ph ph-info" aria-hidden="true"></i>
+        <span>信息</span>
+      </button>
+      <button class="tab" role="tab" data-tab="tools"
+              aria-selected="false">
+        <i class="ph ph-wrench" aria-hidden="true"></i>
+        <span>工具</span>
+      </button>
+    </nav>
+
+    <div class="panels">
+
+      <!-- ============ 列表 ============ -->
+      <section class="panel is-active" data-panel="list">
+        <h2 class="panel-title">
+          <i class="ph ph-queue" aria-hidden="true"></i>
+          <span>播放列表</span>
+        </h2>
+
+        <div class="list-toolbar">
+          <select class="sort-select" id="sortSelect" aria-label="排序方式">
+            <option value="added-desc">最近添加</option>
+            <option value="added-asc">最早添加</option>
+            <option value="name-asc">名称 A-Z</option>
+            <option value="name-desc">名称 Z-A</option>
+            <option value="duration-asc">时长 ↑</option>
+            <option value="duration-desc">时长 ↓</option>
+          </select>
+          <button class="toolbar-btn" type="button" id="btnFilterFav"
+                  aria-pressed="false"
+                  title="只看收藏">
+            <i class="ph ph-heart" aria-hidden="true"></i>
+          </button>
+          <button class="toolbar-btn is-danger" type="button" id="btnClearAll"
+                  title="清空列表">
+            <i class="ph ph-trash" aria-hidden="true"></i>
+          </button>
+        </div>
+
+        <div class="playlist-body" id="playlistBody" tabindex="-1">
+          <div class="playlist-empty" id="playlistEmpty">
+            <i class="ph ph-music-notes-plus" aria-hidden="true"></i>
+            <p>拖入音频文件，或点击「添加音乐」</p>
+            <p class="empty-hint">MP3 · M4A · FLAC · OGG · WAV</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 歌词 ============ -->
+      <section class="panel" data-panel="lyric">
+        <h2 class="panel-title">
+          <i class="ph ph-text-align-center" aria-hidden="true"></i>
+          <span>歌词</span>
+        </h2>
+
+        <div class="lyric-container" id="lyricContainer">
+          <div class="lyric-empty" id="lyricEmpty">
+            <i class="ph ph-text-align-center" aria-hidden="true"></i>
+            <p>当前曲目暂无歌词</p>
+            <p class="empty-hint">拖入 .lrc 文件或点击下方按钮添加</p>
+          </div>
+        </div>
+
+        <div class="lyric-actions">
+          <button class="toolbar-btn" type="button" id="btnImportLrc">
+            <i class="ph ph-file-text" aria-hidden="true"></i>导入 LRC
+          </button>
+          <button class="toolbar-btn" type="button" id="btnEditLrc">
+            <i class="ph ph-pencil-simple" aria-hidden="true"></i>编辑歌词
+          </button>
+        </div>
+
+        <div class="section">
+          <h3 class="section-label">提示</h3>
+          <p class="state-desc is-flush">
+            支持标准 LRC 格式 <code>[mm:ss.xx]歌词</code>，
+            也支持增强 LRC <code>&lt;mm:ss.xx&gt;</code> 字词时间标签。
+            歌词会自动保存在浏览器中。
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ 音效 ============ -->
+      <section class="panel" data-panel="eq">
+        <h2 class="panel-title">
+          <i class="ph ph-equalizer" aria-hidden="true"></i>
+          <span>音效</span>
+        </h2>
+
+        <div class="eq-toggle">
+          <span class="eq-toggle-label">
+            <i class="ph ph-sliders" aria-hidden="true"></i>
+            均衡器
+          </span>
+          <button class="switch" type="button" id="eqSwitch"
+                  role="switch" aria-checked="false"
+                  aria-label="均衡器开关"></button>
+        </div>
+
+        <div class="eq-sliders" id="eqSliders" data-disabled="true">
+          <div class="eq-col">
+            <span class="eq-val" data-eq-val="0">0</span>
+            <div class="eq-slider-wrap">
+              <input type="range" class="eq-slider" data-eq-index="0"
+                     min="-12" max="12" step="1" value="0" aria-label="60 Hz">
+            </div>
+            <span class="eq-freq">60</span>
+          </div>
+          <div class="eq-col">
+            <span class="eq-val" data-eq-val="1">0</span>
+            <div class="eq-slider-wrap">
+              <input type="range" class="eq-slider" data-eq-index="1"
+                     min="-12" max="12" step="1" value="0" aria-label="230 Hz">
+            </div>
+            <span class="eq-freq">230</span>
+          </div>
+          <div class="eq-col">
+            <span class="eq-val" data-eq-val="2">0</span>
+            <div class="eq-slider-wrap">
+              <input type="range" class="eq-slider" data-eq-index="2"
+                     min="-12" max="12" step="1" value="0" aria-label="910 Hz">
+            </div>
+            <span class="eq-freq">910</span>
+          </div>
+          <div class="eq-col">
+            <span class="eq-val" data-eq-val="3">0</span>
+            <div class="eq-slider-wrap">
+              <input type="range" class="eq-slider" data-eq-index="3"
+                     min="-12" max="12" step="1" value="0" aria-label="3.6 kHz">
+            </div>
+            <span class="eq-freq">3.6k</span>
+          </div>
+          <div class="eq-col">
+            <span class="eq-val" data-eq-val="4">0</span>
+            <div class="eq-slider-wrap">
+              <input type="range" class="eq-slider" data-eq-index="4"
+                     min="-12" max="12" step="1" value="0" aria-label="14 kHz">
+            </div>
+            <span class="eq-freq">14k</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-label">预设</h3>
+          <div class="preset-grid" id="presetGrid">
+            <button class="preset-btn" type="button" data-preset="flat"
+                    aria-pressed="true">
+              <i class="ph ph-minus" aria-hidden="true"></i>平坦
+            </button>
+            <button class="preset-btn" type="button" data-preset="bass">
+              <i class="ph ph-speaker-hifi" aria-hidden="true"></i>低音
+            </button>
+            <button class="preset-btn" type="button" data-preset="vocal">
+              <i class="ph ph-user-sound" aria-hidden="true"></i>人声
+            </button>
+            <button class="preset-btn" type="button" data-preset="rock">
+              <i class="ph ph-guitar" aria-hidden="true"></i>摇滚
+            </button>
+            <button class="preset-btn" type="button" data-preset="jazz">
+              <i class="ph ph-saxophone" aria-hidden="true"></i>爵士
+            </button>
+            <button class="preset-btn" type="button" data-preset="electronic">
+              <i class="ph ph-wave-sine" aria-hidden="true"></i>电子
+            </button>
+            <button class="preset-btn" type="button" data-preset="classical">
+              <i class="ph ph-music-notes" aria-hidden="true"></i>古典
+            </button>
+            <button class="preset-btn" type="button" data-preset="custom">
+              <i class="ph ph-pencil-simple" aria-hidden="true"></i>自定义
+            </button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-label">播放速度</h3>
+          <div class="speed-grid" id="speedGrid">
+            <button class="speed-btn" type="button" data-speed="0.5">0.5x</button>
+            <button class="speed-btn" type="button" data-speed="0.75">0.75x</button>
+            <button class="speed-btn" type="button" data-speed="1"
+                    aria-pressed="true">1x</button>
+            <button class="speed-btn" type="button" data-speed="1.25">1.25x</button>
+            <button class="speed-btn" type="button" data-speed="1.5">1.5x</button>
+            <button class="speed-btn" type="button" data-speed="1.75">1.75x</button>
+            <button class="speed-btn" type="button" data-speed="2">2x</button>
+            <button class="speed-btn" type="button" data-speed="2.5">2.5x</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 信息 ============ -->
+      <section class="panel" data-panel="info">
+        <h2 class="panel-title">
+          <i class="ph ph-info" aria-hidden="true"></i>
+          <span>音频信息</span>
+        </h2>
+
+        <div class="info-grid" id="infoGrid">
+          <div class="info-row">
+            <span class="info-label"><i class="ph ph-music-note" aria-hidden="true"></i>曲目</span>
+            <span class="info-value" id="infoTitle">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label"><i class="ph ph-user" aria-hidden="true"></i>艺术家</span>
+            <span class="info-value" id="infoArtist">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label"><i class="ph ph-clock" aria-hidden="true"></i>时长</span>
+            <span class="info-value" id="infoDuration">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label"><i class="ph ph-file" aria-hidden="true"></i>文件大小</span>
+            <span class="info-value" id="infoSize">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label"><i class="ph ph-waveform" aria-hidden="true"></i>格式</span>
+            <span class="info-value" id="infoFormat">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label"><i class="ph ph-speedometer" aria-hidden="true"></i>估算比特率</span>
+            <span class="info-value" id="infoBitrate">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label"><i class="ph ph-wave-sine" aria-hidden="true"></i>采样率</span>
+            <span class="info-value" id="infoSampleRate">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label"><i class="ph ph-speaker-high" aria-hidden="true"></i>声道数</span>
+            <span class="info-value" id="infoChannels">—</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label"><i class="ph ph-list-numbers" aria-hidden="true"></i>列表位置</span>
+            <span class="info-value" id="infoIndex">—</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-label">列表概览</h3>
+          <div class="info-grid">
+            <div class="info-row">
+              <span class="info-label"><i class="ph ph-queue" aria-hidden="true"></i>曲目总数</span>
+              <span class="info-value" id="infoTotal">0</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label"><i class="ph ph-heart" aria-hidden="true"></i>收藏数</span>
+              <span class="info-value" id="infoFavCount">0</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label"><i class="ph ph-hourglass" aria-hidden="true"></i>总时长</span>
+              <span class="info-value" id="infoTotalDuration">0:00</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label"><i class="ph ph-text-align-center" aria-hidden="true"></i>有歌词</span>
+              <span class="info-value" id="infoLyricCount">0</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 工具 ============ -->
+      <section class="panel" data-panel="tools">
+        <h2 class="panel-title">
+          <i class="ph ph-wrench" aria-hidden="true"></i>
+          <span>工具</span>
+        </h2>
+
+        <div class="section">
+          <h3 class="section-label">睡眠定时器</h3>
+          <div class="timer-display">
+            <div class="timer-value" id="timerValue">--:--</div>
+            <p class="timer-label" id="timerLabel">未设置</p>
+          </div>
+          <div class="timer-grid">
+            <button class="timer-btn" type="button" data-timer="15">15 分</button>
+            <button class="timer-btn" type="button" data-timer="30">30 分</button>
+            <button class="timer-btn" type="button" data-timer="45">45 分</button>
+            <button class="timer-btn" type="button" data-timer="60">60 分</button>
+            <button class="timer-btn" type="button" data-timer="90">90 分</button>
+            <button class="timer-btn" type="button" data-timer="0">取消</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-label">AB 循环</h3>
+          <div class="ab-row">
+            <button class="ab-btn" type="button" id="btnSetA">
+              <i class="ph ph-flag" aria-hidden="true"></i>设置 A
+            </button>
+            <button class="ab-btn" type="button" id="btnSetB" disabled>
+              <i class="ph ph-flag-checkered" aria-hidden="true"></i>设置 B
+            </button>
+            <button class="ab-btn" type="button" id="btnClearAB" disabled>
+              <i class="ph ph-x" aria-hidden="true"></i>清除
+            </button>
+          </div>
+          <div class="ab-status" id="abStatus"></div>
+        </div>
+
+        <div class="section">
+          <h3 class="section-label">键盘快捷键</h3>
+          <div class="kbd-list">
+            <div class="kbd-row">
+              <span>播放 / 暂停</span><kbd>空格</kbd>
+            </div>
+            <div class="kbd-row">
+              <span>上一首 / 下一首</span>
+              <span><kbd>Shift</kbd> <kbd>←</kbd> <kbd>→</kbd></span>
+            </div>
+            <div class="kbd-row">
+              <span>音量增减</span>
+              <span><kbd>↑</kbd> <kbd>↓</kbd></span>
+            </div>
+            <div class="kbd-row">
+              <span>静音切换</span><kbd>M</kbd>
+            </div>
+            <div class="kbd-row">
+              <span>快进 / 快退 5s</span>
+              <span><kbd>←</kbd> <kbd>→</kbd></span>
+            </div>
+            <div class="kbd-row">
+              <span>全屏可视化</span><kbd>F</kbd>
+            </div>
+            <div class="kbd-row">
+              <span>切换主题</span>
+              <span><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>L</kbd></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </aside>
+
+  <!-- 右侧：正在播放 -->
+  <section class="now-playing" aria-label="正在播放">
+    <div class="cover-wrap" id="coverWrap" role="button" tabindex="0"
+         aria-label="进入全屏可视化" title="点击进入全屏可视化">
+      <div class="cover-placeholder" id="coverPlaceholder">
+        <i class="ph ph-music-notes" aria-hidden="true"></i>
+      </div>
+      <img class="cover-art" id="coverArt" alt="" hidden>
+    </div>
+
+    <div class="track-info">
+      <p class="track-title" id="trackTitle">未在播放</p>
+      <p class="track-artist" id="trackArtist">添加音乐开始聆听</p>
+      <span class="track-format" id="trackFormat" hidden></span>
+    </div>
+
+    <div class="viz-wrap">
+      <canvas class="viz-canvas" id="vizCanvas"></canvas>
+      <div class="viz-mode-switch" role="group" aria-label="可视化模式">
+        <button class="viz-mode-btn" type="button" data-viz="bars"
+                aria-pressed="true" aria-label="条形">
+          <i class="ph ph-chart-bar" aria-hidden="true"></i>
+        </button>
+        <button class="viz-mode-btn" type="button" data-viz="wave"
+                aria-pressed="false" aria-label="波形">
+          <i class="ph ph-wave-sine" aria-hidden="true"></i>
+        </button>
+        <button class="viz-mode-btn" type="button" data-viz="circle"
+                aria-pressed="false" aria-label="圆形">
+          <i class="ph ph-circle-dashed" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- 歌词覆盖视图 -->
+    <div class="lyric-view" id="lyricView">
+      <div class="lyric-view-head">
+        <div class="lyric-view-title">
+          <i class="ph ph-text-align-center" aria-hidden="true"></i>
+          <span id="lyricViewTitle">歌词</span>
+        </div>
+        <div class="view-toggle" role="group" aria-label="视图切换">
+          <button class="view-toggle-btn" type="button" id="btnViewPlayer"
+                  aria-pressed="false">
+            <i class="ph ph-disc" aria-hidden="true"></i>播放器
+          </button>
+          <button class="view-toggle-btn" type="button" id="btnViewLyric"
+                  aria-pressed="true">
+            <i class="ph ph-text-align-center" aria-hidden="true"></i>歌词
+          </button>
+        </div>
+      </div>
+      <div class="lyric-container" id="lyricContainerBig">
+        <div class="lyric-empty">
+          <i class="ph ph-text-align-center" aria-hidden="true"></i>
+          <p>当前曲目暂无歌词</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- 底部控制条 -->
+<footer class="playbar">
+  <div class="pb-track">
+    <div class="pb-thumb" id="pbThumb">
+      <i class="ph ph-music-note" aria-hidden="true"></i>
+    </div>
+    <div class="pb-info">
+      <p class="pb-title" id="pbTitle">未在播放</p>
+      <p class="pb-artist" id="pbArtist">—</p>
+    </div>
+  </div>
+
+  <div class="pb-center">
+    <div class="pb-controls">
+      <button class="ctrl-btn" type="button" id="btnShuffle"
+              aria-label="随机播放" aria-pressed="false">
+        <i class="ph ph-shuffle" aria-hidden="true"></i>
+      </button>
+      <button class="ctrl-btn" type="button" id="btnPrev" aria-label="上一首" disabled>
+        <i class="ph ph-skip-back" aria-hidden="true"></i>
+      </button>
+      <button class="ctrl-btn play-btn" type="button" id="btnPlay"
+              aria-label="播放" disabled>
+        <i class="ph ph-play" id="playIcon" aria-hidden="true"></i>
+      </button>
+      <button class="ctrl-btn" type="button" id="btnNext" aria-label="下一首" disabled>
+        <i class="ph ph-skip-forward" aria-hidden="true"></i>
+      </button>
+      <button class="ctrl-btn" type="button" id="btnRepeat"
+              aria-label="循环模式" aria-pressed="false" title="不循环">
+        <i class="ph ph-repeat" id="repeatIcon" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="seek-row">
+      <span class="seek-time" id="timeCurrent">0:00</span>
+      <div class="seek-bar" id="seekBar" role="slider"
+           aria-label="播放进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+           tabindex="0">
+        <div class="seek-track">
+          <div class="seek-ab" id="seekAB"></div>
+          <div class="seek-fill" id="seekFill" style="width:0%"></div>
+          <div class="seek-knob" id="seekKnob" style="left:0%"></div>
+        </div>
+      </div>
+      <span class="seek-time right" id="timeTotal">0:00</span>
+    </div>
+  </div>
+
+  <div class="pb-right">
+    <button class="ctrl-btn" type="button" id="btnFullscreen"
+            aria-label="全屏可视化" title="全屏可视化 (F)">
+      <i class="ph ph-arrows-out" aria-hidden="true"></i>
+    </button>
+    <button class="ctrl-btn" type="button" id="btnMute" aria-label="静音">
+      <i class="ph ph-speaker-high" id="muteIcon" aria-hidden="true"></i>
+    </button>
+    <div class="volume-bar" id="volumeBar" role="slider"
+         aria-label="音量" aria-valuemin="0" aria-valuemax="100" aria-valuenow="80"
+         tabindex="0">
+      <div class="volume-track">
+        <div class="volume-fill" id="volumeFill" style="width:80%"></div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- 歌词编辑对话框 -->
+<div class="lyric-dialog" id="lyricDialog" role="dialog"
+     aria-label="编辑歌词" aria-modal="true">
+  <div class="lyric-dialog-inner">
+    <div class="lyric-dialog-head">
+      <h2 class="lyric-dialog-title">
+        <i class="ph ph-text-align-center" aria-hidden="true"></i>
+        <span id="lyricDialogTitle">编辑歌词</span>
+      </h2>
+      <button class="lyric-dialog-close" type="button" id="lyricDialogClose"
+              aria-label="关闭">
+        <i class="ph ph-x" aria-hidden="true"></i>
+      </button>
+    </div>
+    <div class="lyric-dialog-body">
+      <textarea class="lyric-textarea" id="lyricTextarea"
+                placeholder="粘贴 LRC 歌词，例如：&#10;[ti:歌名]&#10;[ar:艺术家]&#10;[00:12.34]第一句歌词&#10;[00:15.67]第二句歌词"
+                spellcheck="false"></textarea>
+      <p class="lyric-hint">
+        支持标准 LRC 格式 <code>[mm:ss.xx]歌词</code> 和增强格式
+        <code>&lt;mm:ss.xx&gt;</code>。也可以直接拖入 <code>.lrc</code> 文件。
+      </p>
+    </div>
+    <div class="lyric-dialog-foot">
+      <button class="toolbar-btn is-danger" type="button" id="btnDeleteLrc">
+        <i class="ph ph-trash" aria-hidden="true"></i>删除歌词
+      </button>
+      <div class="right">
+        <button class="toolbar-btn" type="button" id="btnCancelLrc">
+          取消
+        </button>
+        <button class="toolbar-btn" type="button" id="btnSaveLrc">
+          <i class="ph ph-check" aria-hidden="true"></i>保存
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 全屏可视化 -->
+<div class="fullscreen-viz" id="fullscreenViz" role="dialog"
+     aria-label="全屏可视化" aria-modal="true">
+  <div class="fs-backdrop" id="fsBackdrop"></div>
+  <button class="fs-back" type="button" id="fsBack">
+    <i class="ph ph-caret-left" aria-hidden="true"></i>
+    <span>返回</span>
+  </button>
+  <button class="fs-close" type="button" id="fsClose" aria-label="退出全屏">
+    <i class="ph ph-x" aria-hidden="true"></i>
+  </button>
+  <div class="fs-content">
+    <div class="fs-canvas-wrap">
+      <canvas class="fs-canvas" id="fsCanvas"></canvas>
+      <img class="fs-cover" id="fsCover" alt="">
+      <div class="fs-cover-placeholder" id="fsCoverPlaceholder">
+        <i class="ph ph-music-notes" aria-hidden="true"></i>
+      </div>
+    </div>
+    <div class="fs-info">
+      <p class="fs-title" id="fsTitle">未在播放</p>
+      <p class="fs-artist" id="fsArtist">—</p>
+      <p class="fs-lyric" id="fsLyric"></p>
+    </div>
+  </div>
+</div>
+
+<!-- 拖放遮罩 -->
+<div class="drop-overlay" aria-hidden="true">
+  <div class="drop-inner">
+    <i class="ph ph-music-notes-plus" aria-hidden="true"></i>
+    <p>松开以添加音乐</p>
+    <span>MP3 · M4A · FLAC · OGG · WAV · AAC · LRC</span>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <i class="ph ph-check-circle" id="toastIcon" aria-hidden="true"></i>
+  <span id="toastText"></span>
+</div>
+
+<audio id="audio" preload="metadata"></audio>
+<input type="file" id="fileInput"
+       accept="audio/*,.mp3,.m4a,.flac,.ogg,.wav,.aac,.opus,.oga,.m4b"
+       multiple hidden>
+<input type="file" id="lrcInput"
+       accept=".lrc,text/plain" hidden>
+
+<script src="js/00-core.js"></script>
+<script src="js/10-storage.js"></script>
+<script src="js/20-utils.js"></script>
+<script src="js/25-theme.js"></script>
+<script src="js/30-theme.js"></script>
+<script src="js/40-audio-graph.js"></script>
+<script src="js/50-visualizer.js"></script>
+<script src="js/60-cover.js"></script>
+<script src="js/70-files.js"></script>
+<script src="js/75-playlist.js"></script>
+<script src="js/80-lyrics-ui.js"></script>
+<script src="js/85-playback.js"></script>
+<script src="js/87-panels.js"></script>
+<script src="js/90-controls.js"></script>
+<script src="js/92-fullscreen.js"></script>
+<script src="js/95-shell.js"></script>
+<script src="js/99-init.js"></script>
+</body>
+</html>

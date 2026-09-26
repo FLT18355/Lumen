@@ -1,0 +1,162 @@
+/* ============================================================
+   Lumen Player — 主布局 + 侧栏 + 标签页 + 面板骨架
+   ------------------------------------------------------------
+   从 music.html 拆分而来，保持原有选择器与行为不变。
+   ============================================================ */
+
+/* ============================================================
+   主布局
+   ============================================================ */
+main {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  min-height: 0; overflow: hidden;
+}
+
+/* ============================================================
+   侧栏
+   ============================================================ */
+.sidebar {
+  display: flex; flex-direction: column; min-height: 0;
+  background: color-mix(in oklab, var(--panel) 76%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-right: 1px solid var(--border);
+}
+
+/* ============================================================
+   标签页
+   ============================================================ */
+.tabs {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 3px; padding: 10px;
+  border-bottom: 1px solid var(--border); flex: none;
+}
+.tab {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 5px; padding: 10px 2px 9px;
+  border: 1px solid transparent; border-radius: var(--r-sm);
+  background: transparent; color: var(--fg-dim);
+  font: inherit; font-size: 10px; font-weight: 580;
+  letter-spacing: .02em;
+  line-height: 1; cursor: pointer;
+  transition: background-color var(--dur-2) var(--ease-soft),
+              color var(--dur-2) var(--ease-soft),
+              border-color var(--dur-2) var(--ease-soft),
+              transform var(--dur-1) ease;
+}
+.tab i {
+  font-size: 18px; line-height: 1;
+  transition: transform var(--dur-2) var(--ease-out);
+}
+.tab:hover { background: var(--surface-hover); color: var(--fg); }
+.tab:hover i { transform: translateY(-1px) scale(1.06); }
+.tab:active { transform: scale(0.96); }
+
+/* 选中态：强调色描边 + 底部指示条（不再是五种不同色相） */
+.tab::after {
+  content: "";
+  position: absolute; left: 50%; bottom: 3px;
+  width: 0; height: 2px; border-radius: var(--r-full);
+  background: var(--accent);
+  transform: translateX(-50%);
+  transition: width var(--dur-2) var(--ease-out);
+}
+.tab[aria-selected="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+}
+.tab[aria-selected="true"]::after { width: 18px; }
+.tab:focus-visible {
+  outline: 2px solid color-mix(in oklab, var(--accent) 65%, transparent);
+  outline-offset: 1px;
+}
+
+/* ============================================================
+   面板滚动区
+   ============================================================ */
+.panels {
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden;
+}
+
+.panel {
+  display: none;
+  padding: 16px 15px 22px;
+  animation: panel-in var(--dur-2) var(--ease-out);
+}
+.panel.is-active { display: block; }
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* 面板内元素轻微错峰入场，避免整块硬切 */
+.panel.is-active > * {
+  animation: panel-item-in var(--dur-3) var(--ease-out) backwards;
+}
+.panel.is-active > *:nth-child(1) { animation-delay: 0ms; }
+.panel.is-active > *:nth-child(2) { animation-delay: 40ms; }
+.panel.is-active > *:nth-child(3) { animation-delay: 80ms; }
+.panel.is-active > *:nth-child(4) { animation-delay: 120ms; }
+.panel.is-active > *:nth-child(n+5) { animation-delay: 160ms; }
+@keyframes panel-item-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.panel-title {
+  display: flex; align-items: center; gap: 8px;
+  margin: 0 0 14px; font-family: var(--font-mono);
+  font-size: 10.5px; font-weight: 650;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--accent);
+}
+.panel-title::after {
+  content: "";
+  flex: 1; height: 1px;
+  background: linear-gradient(90deg, var(--accent-line), transparent);
+}
+.panel-title i { font-size: 15px; }
+
+.section {
+  margin-top: 20px; padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.section:first-of-type { margin-top: 0; padding-top: 0; border-top: 0; }
+.section-label {
+  margin: 0 0 10px; font-family: var(--font-mono);
+  font-size: 10px; font-weight: 620;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+/* —— 说明文本 —— */
+.state-desc {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--fg-dim);
+}
+.state-desc.is-flush { max-width: none; }
+.state-desc code,
+.lyric-hint code {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 1px 5px;
+  border-radius: var(--r-xs);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* —— 次级提示（空状态里的格式清单等）—— */
+.empty-hint {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: .06em;
+  color: var(--fg-dim);
+  opacity: .75;
+}
