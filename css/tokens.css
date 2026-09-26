@@ -104,8 +104,12 @@
   /* —— 字体 ——
      Outfit / JetBrains Mono 均只含拉丁字形，中文自动回落到
      系统无衬线（PingFang SC / 微软雅黑），得到「拉丁有性格、
-     中文干净」的混排效果。 */
-  --font-sans: "Outfit Variable", ui-sans-serif, system-ui, -apple-system,
+     中文干净」的混排效果。
+     --font-user 由「自定义字体」功能在运行时写入（见 js/88-fonts.js）：
+     用户上传的字体插在整个字体栈的最前面，未设置时回退到 Outfit。
+     注意：变量替换后尾部的回退链依然生效，
+     var(--font-user, "Outfit Variable"), system-ui, ... 是合法写法。 */
+  --font-sans: var(--font-user, "Outfit Variable"), ui-sans-serif, system-ui, -apple-system,
                "Segoe UI", "PingFang SC", "Hiragino Sans GB",
                "Microsoft YaHei", sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SF Mono",

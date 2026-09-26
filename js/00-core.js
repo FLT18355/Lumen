@@ -105,6 +105,10 @@ const els = {
   btnSetB:        $('btnSetB'),
   btnClearAB:     $('btnClearAB'),
   abStatus:       $('abStatus'),
+  btnFontUpload:  $('btnFontUpload'),
+  btnFontClear:   $('btnFontClear'),
+  fontInput:      $('fontInput'),
+  fontName:       $('fontName'),
   // 控制条
   pbThumb:        $('pbThumb'),
   pbTitle:        $('pbTitle'),

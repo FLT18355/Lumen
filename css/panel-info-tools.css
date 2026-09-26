@@ -149,6 +149,51 @@
 .ab-status.is-visible { display: block; }
 
 /* ============================================================
+   自定义字体
+   ============================================================ */
+.font-current {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: color-mix(in oklab, var(--ctp-surface0) 16%, transparent);
+}
+.font-current-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px; font-weight: 620;
+  letter-spacing: .12em; text-transform: uppercase;
+  color: var(--fg-dim);
+  flex: none;
+}
+.font-current-name {
+  font-size: 12px; font-weight: 600; color: var(--fg);
+  text-align: right;
+  min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.font-current-name.is-custom { color: var(--accent); }
+
+.font-actions {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 8px; margin-top: 8px;
+}
+
+.font-hint {
+  margin: 9px 0 0;
+  font-size: 10.5px;
+  line-height: 1.6;
+  color: var(--fg-dim);
+}
+.font-hint code {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: var(--r-xs);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ============================================================
    快捷键表
    ============================================================ */
 .kbd-list { display: flex; flex-direction: column; gap: 7px; }

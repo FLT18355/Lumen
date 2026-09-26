@@ -70,16 +70,19 @@
   transition: background-color var(--dur-1) ease, color var(--dur-1) ease,
               transform var(--dur-1) ease;
 }
-.ctrl-btn:hover {
+/* 悬停 / 选中态只作用于普通控制键。
+   主播放键是实心强调色底，一旦让这里的 color: var(--accent) 泄漏
+   过去，就会变成「强调色图标画在强调色背景上」而整块隐形。 */
+.ctrl-btn:not(.play-btn):hover {
   background: var(--accent-soft);
   color: var(--accent);
 }
-.ctrl-btn:active { transform: scale(0.9); }
+.ctrl-btn:not(.play-btn):active { transform: scale(0.9); }
 .ctrl-btn:focus-visible {
   outline: 2px solid var(--accent); outline-offset: 1px;
 }
 .ctrl-btn[disabled] { opacity: 0.34; pointer-events: none; }
-.ctrl-btn[aria-pressed="true"] { color: var(--accent); }
+.ctrl-btn:not(.play-btn)[aria-pressed="true"] { color: var(--accent); }
 
 /* 主播放键：实心强调色 + 微弱内高光 */
 .play-btn {
@@ -95,6 +98,11 @@
   transition: transform var(--dur-1) var(--ease-out), filter var(--dur-1) ease,
               box-shadow var(--dur-2) ease;
 }
+/* 每个交互态都显式声明 color，绝不依赖继承或泄漏 */
+.play-btn:hover,
+.play-btn:active,
+.play-btn:focus-visible,
+.play-btn[aria-pressed="true"] { color: var(--accent-ink); }
 .play-btn:hover {
   background: var(--accent);
   filter: brightness(1.08);

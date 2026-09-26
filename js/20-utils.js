@@ -64,9 +64,10 @@ function showToast(text, type) {
   els.toast.className = 'toast is-visible ' +
     (type === 'error' ? 'is-error' : 'is-success');
   clearTimeout(showToast._timer);
+  // 错误提示通常更长（例如「暂不支持 WOFF2，请改用 TTF 或 WOFF」），给足阅读时间
   showToast._timer = setTimeout(function () {
     els.toast.className = 'toast';
-  }, 2400);
+  }, type === 'error' ? 4000 : 2400);
 }
 
 /* ==========================================================

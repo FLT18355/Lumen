@@ -69,6 +69,9 @@ async function init() {
   // 加载设置
   await loadSettings();
 
+  // 恢复已保存的自定义字体（IndexedDB / localStorage）
+  await restoreCustomFont();
+
   // 应用设置到 UI
   els.audio.volume = state.muted ? 0 : state.volume;
   updateVolumeUI();

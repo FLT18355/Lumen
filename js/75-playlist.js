@@ -75,7 +75,11 @@ function renderPlaylist() {
             'aria-label="' + esc(t.title) + ' - ' + esc(t.artist) + '">' +
       '<div class="ti-index">' +
         (isPlayingThis
-          ? '<div class="ti-playing"><span></span><span></span><span></span></div>'
+          // 静态圆角三角（圆角来自同色描边 + stroke-linejoin: round），尖角指向曲名
+          ? '<svg class="ti-playing" viewBox="0 0 12 12" aria-hidden="true" focusable="false">' +
+            '<path d="M4 2.4 L9.8 6 L4 9.6 Z" fill="currentColor" stroke="currentColor" ' +
+            'stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>' +
+            '</svg>'
           : '<span>' + (displayIdx + 1) + '</span>') +
       '</div>' +
       '<div class="ti-meta">' +

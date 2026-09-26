@@ -402,6 +402,27 @@
         </div>
 
         <div class="section">
+          <h3 class="section-label">自定义字体</h3>
+          <div class="font-current">
+            <span class="font-current-label">当前</span>
+            <span class="font-current-name" id="fontName">系统默认</span>
+          </div>
+          <div class="font-actions">
+            <button class="toolbar-btn" type="button" id="btnFontUpload">
+              <i class="ph ph-upload-simple" aria-hidden="true"></i>上传字体
+            </button>
+            <button class="toolbar-btn is-danger" type="button" id="btnFontClear"
+                    disabled>
+              <i class="ph ph-trash" aria-hidden="true"></i>移除
+            </button>
+          </div>
+          <p class="font-hint">
+            支持 <code>.ttf</code> / <code>.woff</code>，字体保存在浏览器本地
+            （IndexedDB），下次打开自动应用。
+          </p>
+        </div>
+
+        <div class="section">
           <h3 class="section-label">键盘快捷键</h3>
           <div class="kbd-list">
             <div class="kbd-row">
@@ -652,6 +673,8 @@
        multiple hidden>
 <input type="file" id="lrcInput"
        accept=".lrc,text/plain" hidden>
+<input type="file" id="fontInput"
+       accept=".ttf,.woff,font/ttf,font/woff" hidden>
 
 <script src="js/00-core.js"></script>
 <script src="js/10-storage.js"></script>
@@ -666,6 +689,7 @@
 <script src="js/80-lyrics-ui.js"></script>
 <script src="js/85-playback.js"></script>
 <script src="js/87-panels.js"></script>
+<script src="js/88-fonts.js"></script>
 <script src="js/90-controls.js"></script>
 <script src="js/92-fullscreen.js"></script>
 <script src="js/95-shell.js"></script>

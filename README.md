@@ -27,6 +27,7 @@
 | ⏰ **睡眠定时器** | 15–90 分钟倒计时，到点暂停 |
 | 🔁 **AB 循环** | 任意设置 A / B 点循环片段 |
 | 🐢 **变速播放** | 0.5x – 2.5x |
+| 🔤 **自定义字体** | 上传 `.ttf` / `.woff` 作为界面字体；存在浏览器本地，重开自动应用 |
 | 🌗 **双主题** | Catppuccin **Mocha** / **Latte**，切换带圆形扩散动画（View Transition） |
 | ⌨️ **键盘全覆盖** | 播放、切歌、快进、音量、静音、全屏、歌词、主题 |
 
@@ -79,6 +80,7 @@ Lumen/
 │   ├── 80-lyrics-ui.js     #   歌词 UI
 │   ├── 85-playback.js      #   播放控制 / 进度条 / 音量 / 音频事件
 │   ├── 87-panels.js        #   信息面板 / 定时器 / AB 循环 / EQ / 速度
+│   ├── 88-fonts.js         #   自定义字体：上传、FontFace 注册、持久化
 │   ├── 90-controls.js      #   按钮绑定 / 搜索排序 / 可视化模式 / 视图切换
 │   ├── 92-fullscreen.js    #   全屏可视化
 │   ├── 95-shell.js         #   标签页 / 全局拖放 / 快捷键 / 尺寸
@@ -87,7 +89,7 @@ Lumen/
 ```
 
 **关于拆分**：`index.html` 仍是单文件，未做任何改动。`music.html` 则拆成了
-「外壳 + 12 个 CSS + 17 个 JS」。脚本按顺序以经典 `<script>` 载入，顶层
+「外壳 + 12 个 CSS + 18 个 JS」。脚本按顺序以经典 `<script>` 载入，顶层
 `const` / `let` / `function` 共享同一个全局词法作用域，因此模块之间的调用
 关系与拆分前的单个 IIFE 完全一致 —— 只是不再需要在一个几千行的文件里翻找。
 
@@ -101,7 +103,8 @@ Lumen/
 - **Outfit / JetBrains Mono** —— 通过 jsDelivr 引入的变量字体（仅拉丁字形，中文回落系统字体）
 - **Phosphor Icons** —— 通过 CDN 引入的图标库
 - **Web Audio API** —— 播放分析 + 均衡器
-- **IndexedDB / localStorage** —— 曲目、歌词、设置持久化
+- **FontFace API** —— 自定义字体注册（`.ttf` / `.woff`）
+- **IndexedDB / localStorage** —— 曲目、歌词、设置、自定义字体持久化
 - **View Transitions API** —— 主题切换动画（渐进增强）
 - **CSS 自定义属性** —— 设计 token 与主题系统
 
@@ -116,6 +119,20 @@ Lumen/
 - **阴影向背景色相偏移**：不使用纯黑投影，统一走 `--shadow-1/2/3`。
 - **动效有理由**：所有动画要么表达层级（面板入场）、要么表达状态（播放中呼吸、
   拖拽反馈），并统一在 `prefers-reduced-motion` 下关闭。
+- **颜色要显式声明**：`.play-btn` 本身也是 `.ctrl-btn`，凡是会写 `color` 的
+  `.ctrl-btn` 状态都加了 `:not(.play-btn)` 限定，且播放键每个交互态都自己声明
+  `color`。同色图标画在同色底上 = 隐形，这类 bug 很容易在重构里复发。
+
+### 自定义字体的实现与边界
+
+- 只接受 **`.ttf` / `.woff`**，并且是**读文件头**判断格式（`wOFF` / `\0\1\0\0`
+  等 magic），不是看扩展名；`.woff2` / `.otf` 会被明确拒绝并给出提示。
+- 字体二进制写入 **IndexedDB 的 `settings` store**（`key = 'custom-font'`），
+  刷新 / 重开浏览器后自动重新注册并应用；IndexedDB 不可用时降级到
+  `localStorage`（base64，上限 1 MB），两条路都不可用才提示「仅本次会话生效」。
+- 只插到 `--font-sans` 的最前面（通过运行时变量 `--font-user`），
+  所以**只影响界面主字体**，等宽区域（时间、标签）仍用 JetBrains Mono。
+- 上传时先把新字面 `load()` 成功、再替换旧字面，解析失败不会把可用字体弄丢。
 
 ### 已修复
 
@@ -123,6 +140,13 @@ Lumen/
   定位元素，绘制层级压在 `.fs-close` 上，把点击事件全部吃掉了。现在显式建立
   层级（背景 0 / 内容 1 / 退出控件 3），并让内容层 `pointer-events: none`，
   同时新增左上角「返回」按钮。（详见 `css/fullscreen.css` 的修复记录）
+- **播放列表的「正在播放」标记像个坏图标**：原来是一组 2.5px 宽的跳动竖条
+  （迷你均衡器），在列表行里太小、容易被误认成损坏的字形。已换成**静态圆角
+  三角形 SVG**，尖角指向曲名，圆角由同色描边 + `stroke-linejoin: round` 生成。
+- **播放键图标悬停时消失**：`.play-btn` 同时命中 `.ctrl-btn:hover`，后者把
+  `color` 设成了 `var(--accent)`，而前者把 `background` 也设成 `var(--accent)`
+  —— 强调色图标画在强调色底上就隐形了。已把 `.ctrl-btn` 的着色状态限定为
+  `:not(.play-btn)`，并让播放键各状态显式声明 `color: var(--accent-ink)`。
 
 ---
 

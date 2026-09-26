@@ -27,6 +27,7 @@
               color var(--dur-1) ease, transform var(--dur-1) ease;
 }
 .toolbar-btn i { font-size: 14px; }
+.toolbar-btn[disabled] { opacity: .4; pointer-events: none; }
 .toolbar-btn:hover {
   background: var(--accent-soft);
   border-color: var(--accent-line);
@@ -212,22 +213,16 @@
 }
 
 /* ============================================================
-   播放中的跳动指示
+   正在播放标记：静态圆角三角，尖角指向右侧曲名
+   ------------------------------------------------------------
+   原来这里是三条 2.5px 宽的跳动竖条（迷你均衡器），在列表行
+   里太小，容易被看成一个坏掉的图标。现在换成静态 SVG 三角，
+   圆角由 stroke-linejoin: round + 同色描边生成，无需动画。
    ============================================================ */
 .ti-playing {
-  display: flex; align-items: flex-end;
-  gap: 1.5px; height: 12px; width: 22px;
-  justify-content: center;
-}
-.ti-playing span {
-  width: 2.5px; border-radius: var(--r-full);
-  background: var(--accent);
-  animation: eq-bounce 0.9s ease-in-out infinite;
-}
-.ti-playing span:nth-child(1) { animation-delay: 0s;    height: 40%; }
-.ti-playing span:nth-child(2) { animation-delay: .18s;  height: 80%; }
-.ti-playing span:nth-child(3) { animation-delay: .36s;  height: 55%; }
-@keyframes eq-bounce {
-  0%, 100% { transform: scaleY(0.35); }
-  50%      { transform: scaleY(1); }
+  display: block;
+  width: 14px; height: 14px;
+  margin: 0 auto;
+  color: var(--accent);
+  filter: drop-shadow(0 0 5px color-mix(in oklab, var(--accent) 45%, transparent));
 }
