@@ -1,22 +1,27 @@
 /* ============================================================
    Lumen Player — 自定义字体
    ------------------------------------------------------------
-   允许用户上传 .ttf / .woff，通过 FontFace API 注册后插到
+   允许用户上传 .ttf / .woff2，通过 FontFace API 注册后插到
    --font-sans 的最前面（见 css/tokens.css 的 --font-user）。
 
    持久化：字体二进制存进 IndexedDB 的 settings store
    （key = 'custom-font'），刷新 / 重开浏览器后自动重新注册并
    应用，无需再次上传。IndexedDB 不可用时降级到 localStorage
-   （base64，有体积上限），两条路都走不通才提示「仅本次会话生效」。
+   （base64），两条路都走不通才提示「仅本次会话生效」。
+
+   体积不做限制：能读进内存、能写进存储就行。写入失败（超配额
+   或存储不可用）会走上面的降级 / 提示路径，不会静默丢字体。
    ============================================================ */
 
 'use strict';
 
-const FONT_STORE_KEY = 'custom-font';      // IndexedDB settings store 里的主键
+const FONT_STORE_KEY = 'custom-font';       // IndexedDB settings store 里的主键
 const FONT_LOCAL_KEY = 'lumen-player-font'; // localStorage 降级键
 const FONT_FAMILY = 'LumenUserFont';        // 注册到 FontFaceSet 的族名
-const FONT_MAX_BYTES = 8 * 1024 * 1024;     // 单个字体上限 8 MB
-const FONT_LOCAL_MAX = 1024 * 1024;         // localStorage 降级时的上限 1 MB
+
+/* 支持的格式（按文件头识别后的标识）。
+   WOFF2 有更好的压缩率，且 FontFace 在所有现代浏览器都原生支持。 */
+const FONT_OK_FORMATS = ['ttf', 'woff2'];
 
 let userFontFace = null;
 
@@ -97,15 +102,14 @@ async function persistFont(record) {
     }
   }
   try {
-    if (record.data.byteLength <= FONT_LOCAL_MAX) {
-      localStorage.setItem(FONT_LOCAL_KEY, JSON.stringify({
-        name: record.name,
-        family: record.family,
-        format: record.format,
-        b64: bufferToBase64(record.data)
-      }));
-      return 'local';
-    }
+    // 不设体积上限：交给 localStorage 自己判配额，超了会抛错并走下面的提示
+    localStorage.setItem(FONT_LOCAL_KEY, JSON.stringify({
+      name: record.name,
+      family: record.family,
+      format: record.format,
+      b64: bufferToBase64(record.data)
+    }));
+    return 'local';
   } catch (e) {
     console.warn('字体写入 localStorage 失败', e);
   }
@@ -172,10 +176,6 @@ async function restoreCustomFont() {
    ========================================================== */
 async function handleFontFile(file) {
   if (!file) return;
-  if (file.size > FONT_MAX_BYTES) {
-    showToast('字体文件过大（上限 8 MB）', 'error');
-    return;
-  }
 
   let buf;
   try {
@@ -186,12 +186,14 @@ async function handleFontFile(file) {
   }
 
   const format = detectFontFormat(buf);
-  if (format === 'woff2') {
-    showToast('暂不支持 WOFF2，请改用 TTF 或 WOFF', 'error');
-    return;
-  }
-  if (format !== 'ttf' && format !== 'woff') {
-    showToast('无法识别该字体，仅支持 TTF / WOFF', 'error');
+  if (FONT_OK_FORMATS.indexOf(format) === -1) {
+    if (format === 'woff') {
+      showToast('已不再支持 WOFF，请改用 TTF 或 WOFF2', 'error');
+    } else if (format === 'otf') {
+      showToast('暂不支持 OTF，请改用 TTF 或 WOFF2', 'error');
+    } else {
+      showToast('无法识别该字体，仅支持 TTF / WOFF2', 'error');
+    }
     return;
   }
 
